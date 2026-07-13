@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/datasets/schemas/faq.schema.json",
+  "title": "FAQ Dataset",
+  "type": "object",
+  "required": ["schema_version", "items"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "question_th", "answer_th", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^faq_[a-z0-9_]+$" },
+          "question_th": { "type": "string", "minLength": 1 },
+          "answer_th": { "type": "string", "minLength": 1 },
+          "intent_ids": { "type": "array", "items": { "type": "string" } },
+          "status": { "enum": ["draft", "approved", "deprecated"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

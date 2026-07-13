@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/datasets/schemas/intents.schema.json",
+  "title": "Intent Dataset",
+  "type": "object",
+  "required": ["schema_version", "items"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label_th", "description", "examples", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "label_th": { "type": "string", "minLength": 1 },
+          "description": { "type": "string", "minLength": 1 },
+          "examples": { "type": "array", "items": { "type": "string" } },
+          "status": { "enum": ["draft", "approved", "deprecated"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -33,6 +33,12 @@ aas-stone-agent/chat_history/*
 !aas-stone-agent/chat_history/README.md
 !aas-stone-agent/chat_history/.gitkeep
 
+# Knowledge Pipeline v2 private source and review output
+knowledge/raw/*
+!knowledge/raw/README.md
+knowledge/processed/*
+!knowledge/processed/README.md
+
 # Local tool (exclude for now)
 tools/thai-token-optimizer/
 

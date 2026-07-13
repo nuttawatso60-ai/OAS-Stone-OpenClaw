@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/datasets/schemas/vocabulary.schema.json",
+  "title": "Vocabulary Dataset",
+  "type": "object",
+  "required": ["schema_version", "items"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "term_th", "definition_th", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^term_[a-z0-9_]+$" },
+          "term_th": { "type": "string", "minLength": 1 },
+          "synonyms_th": { "type": "array", "items": { "type": "string" } },
+          "definition_th": { "type": "string", "minLength": 1 },
+          "category": { "type": "string" },
+          "status": { "enum": ["draft", "approved", "deprecated"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

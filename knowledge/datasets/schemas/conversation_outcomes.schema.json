@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/datasets/schemas/conversation_outcomes.schema.json",
+  "title": "Conversation Outcome Dataset",
+  "type": "object",
+  "required": ["schema_version", "items"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "outcome", "definition_th", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^outcome_[a-z0-9_]+$" },
+          "outcome": { "enum": ["quoted", "won", "lost", "follow_up", "unresolved"] },
+          "definition_th": { "type": "string", "minLength": 1 },
+          "count": { "type": "integer", "minimum": 0 },
+          "status": { "enum": ["draft", "approved", "deprecated"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

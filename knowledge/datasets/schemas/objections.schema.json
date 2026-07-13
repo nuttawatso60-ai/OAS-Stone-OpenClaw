@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/datasets/schemas/objections.schema.json",
+  "title": "Objection Dataset",
+  "type": "object",
+  "required": ["schema_version", "items"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "topic", "objection_th", "response_th", "status"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^obj_[a-z0-9_]+$" },
+          "topic": { "type": "string", "minLength": 1 },
+          "objection_th": { "type": "string", "minLength": 1 },
+          "response_th": { "type": "string", "minLength": 1 },
+          "handoff_required": { "type": "boolean", "default": false },
+          "status": { "enum": ["draft", "approved", "deprecated"] }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
