@@ -20,11 +20,12 @@ knowledge/
 
 ```mermaid
 flowchart LR
-    A[Raw customer-chat export] --> B[Manual de-identification and review]
-    B --> C[Processed conversation records]
-    C --> D[Curated JSON datasets]
-    D --> E[Markdown knowledge documents]
-    E --> F[Owner approval and agent use]
+    A[Raw customer-chat export] --> B[Deterministic de-identification]
+    B --> C[Manual review]
+    C --> D[Processed conversation records]
+    D --> E[Curated JSON datasets]
+    E --> F[Markdown knowledge documents]
+    F --> G[Owner approval and agent use]
 ```
 
 Only curated datasets and their Markdown documents are intended for version control. Keep personal data and private conversation text in `raw/` or `processed/`.
@@ -32,7 +33,30 @@ Only curated datasets and their Markdown documents are intended for version cont
 ## Operating sequence
 
 1. Place a local source export in `raw/`; do not commit it.
-2. Manually remove personal data and private text, then place the review output in `processed/`; do not commit it.
-3. Curate approved aggregates into the corresponding `datasets/*.json` file using its schema.
-4. Render or update the matching Markdown document from `docs/templates/`.
-5. Obtain owner approval before using a dataset as agent knowledge.
+2. Run `node scripts/deidentify.js` to copy `.txt` files to `processed/` with deterministic PII replacements. Raw files are read-only, and an existing processed file is never overwritten.
+3. Manually review the processed output before curating any knowledge.
+4. Curate approved aggregates into the corresponding `datasets/*.json` file using its schema.
+5. Render or update the matching Markdown document from `docs/templates/`.
+6. Obtain owner approval before using a dataset as agent knowledge.
+
+## Deterministic de-identification
+
+`scripts/deidentify.js` runs only on local `.txt` files under `knowledge/raw/` and writes the matching relative path under `knowledge/processed/`. It uses no AI or LLM and preserves all non-matching text exactly, including UTF-8 Thai text, blank lines, line ordering, and original line endings (LF or CRLF).
+
+CLI usage:
+
+- `node scripts/deidentify.js` — process files; exits non-zero on any safety violation without writing partial output for the failing plan.
+- `node scripts/deidentify.js --dry-run` — list the relative paths that would be processed without writing anything.
+- `DEIDENTIFY_RAW_DIR` / `DEIDENTIFY_PROCESSED_DIR` environment variables override the default directories (used by tests to avoid touching real data).
+
+Console and error output never include file contents — only counts, relative paths, and the conflicting output path.
+
+The first version recognizes common formats for:
+
+- phone numbers → `[PHONE]`
+- email addresses → `[EMAIL]`
+- labeled LINE IDs → `[LINE_ID]`
+- Thai names following labels such as `ชื่อ:` (up to two Thai words) or `คุณ ` (one Thai word) → `[PERSON]`
+- addresses following labels such as `ที่อยู่:` or `ส่งที่:` → `[ADDRESS]`
+
+These are conservative pattern matches, not a guarantee that all personal data has been removed. A person must review every processed file before it is used as business knowledge.
