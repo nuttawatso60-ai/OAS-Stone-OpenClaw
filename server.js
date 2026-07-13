@@ -63,6 +63,18 @@ app.post('/api/quotes/preview', (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`OAS quotation app: http://localhost:${PORT}`);
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`OAS quotation app: http://localhost:${PORT}`);
+  });
+}
+
+app.use((error, req, res, next) => {
+  if (error instanceof SyntaxError && Object.hasOwn(error, 'body')) {
+    return res.status(400).json({ error: 'Invalid JSON request body' });
+  }
+
+  return next(error);
 });
+
+module.exports = { app };
