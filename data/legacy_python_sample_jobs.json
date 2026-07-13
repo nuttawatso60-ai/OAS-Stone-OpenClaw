@@ -1,0 +1,67 @@
+[
+  {
+    "job_id": "JOB-001",
+    "description": "ป้ายชื่อบ้าน - บ้านสุขใจ",
+    "stone_type": "granite_black",
+    "width_cm": 40,
+    "height_cm": 20,
+    "thickness": "3cm",
+    "text": "บ้านสุขใจ",
+    "paint": "gold_paint",
+    "base": "none",
+    "installation": "standard",
+    "delivery": "local_roi_et"
+  },
+  {
+    "job_id": "JOB-002",
+    "description": "ป้ายหลุมฝังศพ - นายสมชาย ใจดี",
+    "stone_type": "granite_grey",
+    "width_cm": 60,
+    "height_cm": 90,
+    "thickness": "5cm",
+    "text": "นายสมชาย ใจดี เกิด ๑ มกราคม ๒๔๘๐ ถึงแก่กรรม ๑๕ มีนาคม ๒๕๕๐",
+    "paint": "white",
+    "base": "simple",
+    "installation": "complex",
+    "delivery": "roi_et_province"
+  },
+  {
+    "job_id": "JOB-003",
+    "description": "ป้ายร้านค้า - ร้านทองโกลด์ ร้อยเอ็ด",
+    "stone_type": "marble_white",
+    "width_cm": 120,
+    "height_cm": 40,
+    "thickness": "3cm",
+    "text": "ร้านทองโกลด์ รับซื้อขายทองคำ โทร 043-000-000",
+    "paint": "gold_genuine",
+    "base": "none",
+    "installation": "standard",
+    "delivery": "pickup"
+  },
+  {
+    "job_id": "JOB-004",
+    "description": "ป้ายวัด - วัดป่าสันติธรรม",
+    "stone_type": "granite_black",
+    "width_cm": 150,
+    "height_cm": 60,
+    "thickness": "8cm",
+    "text": "วัดป่าสันติธรรม ตำบลสระบัว อำเภอปทุมรัตต์ จังหวัดร้อยเอ็ด",
+    "paint": "gold_genuine",
+    "base": "premium",
+    "installation": "complex",
+    "delivery": "roi_et_province"
+  },
+  {
+    "job_id": "JOB-005",
+    "description": "ป้ายอนุสรณ์ - ผู้ก่อตั้งโรงเรียน",
+    "stone_type": "sandstone",
+    "width_cm": 80,
+    "height_cm": 50,
+    "thickness": "5cm",
+    "text": "อนุสรณ์ นายประเสริฐ มีสุข ผู้ก่อตั้งโรงเรียนบ้านทุ่งนา พ.ศ. ๒๕๐๐",
+    "paint": "black",
+    "base": "custom",
+    "installation": "complex",
+    "delivery": "local_roi_et"
+  }
+]

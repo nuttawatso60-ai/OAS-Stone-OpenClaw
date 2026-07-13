@@ -1,0 +1,11 @@
+{
+  "name": "aas-stone-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "import": "node scripts/import_chats.js",
+    "analyze": "node scripts/analyze_questions.js",
+    "build": "node scripts/build_knowledge.js"
+  }
+}

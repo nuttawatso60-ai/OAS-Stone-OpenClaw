@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+*.key
+*.pem
+
+# Python cache/test output
+__pycache__/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Build artifacts
+dist/
+build/
+
+# Generated/exported local output
+aas-stone-agent/output/
+
+# Private customer chat history
+aas-stone-agent/chat_history/*
+!aas-stone-agent/chat_history/README.md
+!aas-stone-agent/chat_history/.gitkeep
+
+# Local tool (exclude for now)
+tools/thai-token-optimizer/
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local agent settings
+.claude/settings.local.json

@@ -1,0 +1,67 @@
+[
+  {
+    "id": "JOB-001",
+    "description": "Small black granite house number plaque with Thai text",
+    "material": "granite",
+    "width_cm": 30,
+    "height_cm": 20,
+    "depth_mm": 3,
+    "complexity": "standard",
+    "quantity": 1,
+    "paint": true,
+    "install": false,
+    "rush": false
+  },
+  {
+    "id": "JOB-002",
+    "description": "Acrylic shop counter sign with logo outline",
+    "material": "acrylic",
+    "width_cm": 60,
+    "height_cm": 25,
+    "depth_mm": 2,
+    "complexity": "detailed",
+    "quantity": 2,
+    "paint": false,
+    "install": false,
+    "rush": false
+  },
+  {
+    "id": "JOB-003",
+    "description": "Granite memorial front panel with deep lettering",
+    "material": "granite",
+    "width_cm": 80,
+    "height_cm": 45,
+    "depth_mm": 6,
+    "complexity": "premium",
+    "quantity": 1,
+    "paint": true,
+    "install": true,
+    "rush": false
+  },
+  {
+    "id": "JOB-004",
+    "description": "Marble name plate with floral border",
+    "material": "marble",
+    "width_cm": 45,
+    "height_cm": 30,
+    "depth_mm": 4,
+    "complexity": "detailed",
+    "quantity": 1,
+    "paint": true,
+    "install": false,
+    "rush": true
+  },
+  {
+    "id": "JOB-005",
+    "description": "Sandstone garden marker set with simple text",
+    "material": "sandstone",
+    "width_cm": 25,
+    "height_cm": 15,
+    "depth_mm": 3,
+    "complexity": "simple",
+    "quantity": 5,
+    "paint": false,
+    "install": false,
+    "rush": false
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "name": "pricing-engine-v0.1",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server.js",
+    "price": "node tools/pricing_engine.js calculate data/sample_jobs.json",
+    "price:file": "node tools/pricing_engine.js calculate",
+    "price:python": "python pricing_engine.py"
+  },
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}

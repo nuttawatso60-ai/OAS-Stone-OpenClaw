@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+temp/
+logs/
+cache/
+output/
+*.zip
+*.rar
+*.7z
+*.png
+*.jpg
+*.jpeg
+*.mp4
+*.mov
+*.blend1
+*.tmp

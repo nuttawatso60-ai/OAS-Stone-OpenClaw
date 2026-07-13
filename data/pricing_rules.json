@@ -1,0 +1,36 @@
+{
+  "currency": "THB",
+  "minimum_price": 500,
+  "setup_fee": 150,
+  "cnc_rate_per_minute": 18,
+  "depth_threshold_mm": 4,
+  "deep_cut_extra_per_cm2_per_mm": 0.08,
+  "deep_cut_time_factor_per_mm": 0.08,
+  "paint_per_cm2": 0.35,
+  "installation_fee": 1200,
+  "rush_multiplier": 1.3,
+  "complexity_multipliers": {
+    "simple": 0.85,
+    "standard": 1,
+    "detailed": 1.35,
+    "premium": 1.7
+  },
+  "materials": {
+    "granite": {
+      "base_per_cm2": 1.2,
+      "minutes_per_cm2": 0.018
+    },
+    "marble": {
+      "base_per_cm2": 1.6,
+      "minutes_per_cm2": 0.02
+    },
+    "acrylic": {
+      "base_per_cm2": 0.55,
+      "minutes_per_cm2": 0.011
+    },
+    "sandstone": {
+      "base_per_cm2": 0.9,
+      "minutes_per_cm2": 0.016
+    }
+  }
+}

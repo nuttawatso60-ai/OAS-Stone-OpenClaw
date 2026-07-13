@@ -1,0 +1,16 @@
+:root { font-family: Arial, sans-serif; color: #20252b; background: #f3f5f7; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+.container { max-width: 900px; margin: 32px auto; padding: 0 16px; }
+.form-card, .quote { background: #fff; border-radius: 10px; box-shadow: 0 2px 12px #18202a18; padding: 28px; margin-bottom: 24px; }
+h1, h2, h3, p { margin-top: 0; } h1, h2 { color: #233b57; } h3 { font-size: 1rem; margin-bottom: 8px; }
+.grid, .quote-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+label { display: grid; gap: 6px; font-weight: 600; margin-bottom: 16px; }
+input, select, textarea, button { font: inherit; padding: 10px; border: 1px solid #bcc7d2; border-radius: 6px; }
+textarea { resize: vertical; } button { background: #1d6b58; color: #fff; border: 0; cursor: pointer; font-weight: 700; } button:hover { background: #155040; }
+.checkbox { display: flex; align-items: center; gap: 8px; } .checkbox input { width: 18px; height: 18px; }
+.error { color: #b3261e; min-height: 1.2em; margin-bottom: 0; }.hidden { display: none; }
+.quote-header { display: flex; justify-content: space-between; gap: 20px; }.quote-meta { text-align: right; }.quote-grid { margin: 20px 0; }
+table { width: 100%; border-collapse: collapse; } th, td { padding: 10px; border-bottom: 1px solid #dce2e8; text-align: left; } td:last-child, th:last-child { text-align: right; } tfoot { font-size: 1.15rem; color: #1d6b58; }.disclaimer { color: #59636e; margin: 18px 0; }
+@media (max-width: 620px) { .grid, .quote-grid { grid-template-columns: 1fr; }.quote-header { display: block; }.quote-meta { text-align: left; } }
+@media print { :root, body { background: #fff; }.container { max-width: none; margin: 0; padding: 0; }.no-print { display: none !important; }.quote { display: block !important; box-shadow: none; padding: 0; }.quote-header { margin-top: 0; } }

@@ -1,0 +1,53 @@
+{
+  "version": "0.1",
+  "currency": "THB",
+  "note": "ราคาทุกอย่างหน่วยเป็นบาท (THB)",
+
+  "stone_types": {
+    "granite_black":  { "name": "หินแกรนิตดำ",   "price_per_sqcm": 2.80 },
+    "granite_grey":   { "name": "หินแกรนิตเทา",   "price_per_sqcm": 2.20 },
+    "marble_white":   { "name": "หินอ่อนขาว",     "price_per_sqcm": 3.50 },
+    "sandstone":      { "name": "หินทราย",         "price_per_sqcm": 1.60 }
+  },
+
+  "thickness_multiplier": {
+    "2cm": 1.00,
+    "3cm": 1.25,
+    "5cm": 1.60,
+    "8cm": 2.20
+  },
+
+  "engraving": {
+    "price_per_char": 18,
+    "minimum_charge": 250
+  },
+
+  "paint": {
+    "none":         { "name": "ไม่ทาสี",          "price_per_char": 0  },
+    "white":        { "name": "สีขาว",             "price_per_char": 4  },
+    "black":        { "name": "สีดำ",              "price_per_char": 4  },
+    "red":          { "name": "สีแดง",             "price_per_char": 6  },
+    "gold_paint":   { "name": "สีทอง (สีทาธรรมดา)", "price_per_char": 10 },
+    "gold_genuine": { "name": "ทองคำเปลว",        "price_per_char": 45 }
+  },
+
+  "base": {
+    "none":    { "name": "ไม่มีฐาน",           "price": 0    },
+    "simple":  { "name": "ฐานหินเรียบ",         "price": 600  },
+    "premium": { "name": "ฐานหินขัดพร้อมลาย",  "price": 1800 },
+    "custom":  { "name": "ฐานพิเศษตามสั่ง",    "price": 3500 }
+  },
+
+  "installation": {
+    "none":     { "name": "ไม่ติดตั้ง",             "price": 0    },
+    "standard": { "name": "ติดตั้งทั่วไป",           "price": 500  },
+    "complex":  { "name": "ติดตั้งพิเศษ (เจาะ/ยึด)", "price": 1500 }
+  },
+
+  "delivery": {
+    "pickup":           { "name": "รับเอง",               "price": 0   },
+    "local_roi_et":     { "name": "ส่งในอำเภอ",           "price": 120 },
+    "roi_et_province":  { "name": "ส่งในจังหวัดร้อยเอ็ด", "price": 350 },
+    "nationwide":       { "name": "ส่งต่างจังหวัด",        "price": 700 }
+  }
+}

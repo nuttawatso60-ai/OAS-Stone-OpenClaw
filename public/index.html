@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>อ.เอ.เอส แกะสลัก | ใบเสนอราคา</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <main class="container">
+    <section class="form-card no-print">
+      <h1>อ.เอ.เอส แกะสลัก</h1>
+      <p>สร้างใบเสนอราคาเบื้องต้น</p>
+      <form id="quote-form">
+        <div class="grid">
+          <label>ชื่อลูกค้า<input name="customerName" required></label>
+          <label>เบอร์โทร<input name="phone" type="tel" required></label>
+          <label>ประเภทงาน<input name="jobType" placeholder="เช่น ป้ายหน้าร้าน" required></label>
+          <label>วัสดุ
+            <select name="material" required>
+              <option value="granite">Granite</option><option value="marble">Marble</option>
+              <option value="acrylic">Acrylic</option><option value="sandstone">Sandstone</option>
+            </select>
+          </label>
+          <label>กว้าง (cm)<input name="widthCm" type="number" min="0.01" step="0.01" required></label>
+          <label>สูง (cm)<input name="heightCm" type="number" min="0.01" step="0.01" required></label>
+          <label>จำนวน<input name="quantity" type="number" min="1" step="1" value="1" required></label>
+          <label>ความซับซ้อน
+            <select name="complexity"><option value="simple">Simple</option><option value="standard" selected>Standard</option><option value="detailed">Detailed</option><option value="premium">Premium</option></select>
+          </label>
+        </div>
+        <label class="checkbox"><input name="rush" type="checkbox"> งานด่วน</label>
+        <label>หมายเหตุ<textarea name="notes" rows="3" placeholder="รายละเอียดเพิ่มเติม"></textarea></label>
+        <button type="submit">ดู Quote Preview</button>
+        <p id="error" class="error" role="alert"></p>
+      </form>
+    </section>
+
+    <section id="quote" class="quote hidden" aria-live="polite"></section>
+  </main>
+  <script src="/app.js"></script>
+</body>
+</html>
