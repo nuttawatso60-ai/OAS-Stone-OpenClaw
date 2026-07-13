@@ -13,10 +13,13 @@
 // - Never modifies files under the raw input directory.
 // - Refuses to overwrite existing processed files.
 // - Refuses to run when input and output directories resolve to the same path
-//   or one contains the other.
-// - Symbolic links (files and directories) are never followed.
+//   or one contains the other; comparisons resolve "." and ".." and are
+//   case-insensitive on Windows.
+// - Refuses to write output anywhere inside the workspace knowledge/raw/.
+// - Symbolic links (files and directories) are rejected, never followed.
 // - Only .txt files are processed; output paths are validated to stay inside
-//   the processed directory.
+//   the processed directory, re-checked against the real (symlink-resolved)
+//   parent directory before each write.
 
 const fs = require('fs');
 const path = require('path');
@@ -54,7 +57,7 @@ function collectTextFiles(directory) {
   return fs.readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
     const entryPath = path.join(directory, entry.name);
     if (entry.isSymbolicLink()) {
-      return [];
+      throw new Error(`Refusing symlink input: ${entryPath}`);
     }
     if (entry.isDirectory()) {
       return collectTextFiles(entryPath);
@@ -63,12 +66,47 @@ function collectTextFiles(directory) {
   });
 }
 
+// Containment checks compare fully resolved paths ("." and ".." segments are
+// collapsed by path.resolve) and are case-insensitive on Windows, where the
+// filesystem treats knowledge\raw and knowledge\RAW as the same directory.
+// Matches the helper in scripts/normalize_conversations.js.
+function toComparablePath(inputPath) {
+  const resolved = path.resolve(inputPath);
+  return process.platform === 'win32' ? resolved.toLowerCase() : resolved;
+}
+
 function isSamePathOrContained(parentPath, childPath) {
-  if (parentPath === childPath) {
+  const parent = toComparablePath(parentPath);
+  const child = toComparablePath(childPath);
+  if (parent === child) {
     return true;
   }
-  const relative = path.relative(parentPath, childPath);
-  return relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative);
+  const relative = path.relative(parent, child);
+  return (
+    relative !== '' &&
+    relative !== '..' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
+}
+
+function pathsOverlap(firstPath, secondPath) {
+  return isSamePathOrContained(firstPath, secondPath) || isSamePathOrContained(secondPath, firstPath);
+}
+
+function assertSafeRootDirectory(directory, label) {
+  let stat;
+  try {
+    stat = fs.lstatSync(directory);
+  } catch {
+    return; // Does not exist yet; nothing to follow.
+  }
+  if (stat.isSymbolicLink()) {
+    throw new Error(`Refusing symlink ${label} directory: ${directory}`);
+  }
+  if (!stat.isDirectory()) {
+    throw new Error(`${label} path must be a directory: ${directory}`);
+  }
 }
 
 function processRawDirectory({
@@ -78,10 +116,18 @@ function processRawDirectory({
 } = {}) {
   const rawRoot = path.resolve(rawDir);
   const processedRoot = path.resolve(processedDir);
+  const workspaceRawRoot = path.resolve(DEFAULT_RAW_DIR);
 
-  if (isSamePathOrContained(rawRoot, processedRoot) || isSamePathOrContained(processedRoot, rawRoot)) {
+  if (pathsOverlap(rawRoot, processedRoot)) {
     throw new Error('Raw and processed directories must not be the same or nested inside each other.');
   }
+  // Output must never overlap the workspace knowledge/raw/, even when a
+  // custom raw directory is configured. Checked before anything is created.
+  if (pathsOverlap(workspaceRawRoot, processedRoot)) {
+    throw new Error(`Refusing to write output inside knowledge/raw/: ${processedRoot}`);
+  }
+  assertSafeRootDirectory(rawRoot, 'raw');
+  assertSafeRootDirectory(processedRoot, 'processed');
 
   const sourceFiles = collectTextFiles(rawRoot);
   const plannedFiles = [];
@@ -105,6 +151,13 @@ function processRawDirectory({
     for (const { sourceFile, outputFile } of plannedFiles) {
       const redactedText = deidentifyText(fs.readFileSync(sourceFile, 'utf8'));
       fs.mkdirSync(path.dirname(outputFile), { recursive: true });
+      // Re-check containment against the real (symlink-resolved) parent so a
+      // symlinked intermediate directory cannot redirect the write outside
+      // the processed tree.
+      const realParent = fs.realpathSync(path.dirname(outputFile));
+      if (!isSamePathOrContained(fs.realpathSync(processedRoot), realParent)) {
+        throw new Error(`Refusing to write outside processed directory: ${outputFile}`);
+      }
       // 'wx' fails if the path already exists (including symlinks), so a file
       // created between the plan check and this write can never be overwritten
       // and a symlink at the output path is never followed.

@@ -52,6 +52,8 @@ CLI usage:
 
 Console and error output never include file contents — only counts, relative paths, and the conflicting output path.
 
+Path safety: directory comparisons resolve `.`/`..` and are case-insensitive on Windows; the output directory may never be the raw directory, overlap it, or sit anywhere inside the workspace `knowledge/raw/`; symbolic links in the input tree cause the run to fail instead of being silently skipped.
+
 The first version recognizes common formats for:
 
 - phone numbers → `[PHONE]`

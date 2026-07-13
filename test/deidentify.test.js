@@ -235,7 +235,7 @@ test('rejects a processed directory nested inside the raw directory and vice ver
   );
 });
 
-test('does not follow symbolic links inside the raw directory', t => {
+test('rejects symbolic links inside the raw directory where supported', t => {
   const { root, rawDir, processedDir } = makeTempWorkspace();
   const outsideFile = path.join(root, 'outside.txt');
   fs.writeFileSync(outsideFile, 'โทร 0812345678\n', 'utf8');
@@ -247,10 +247,99 @@ test('does not follow symbolic links inside the raw directory', t => {
     return;
   }
 
-  const result = processRawDirectory({ rawDir, processedDir });
+  assert.throws(
+    () => processRawDirectory({ rawDir, processedDir }),
+    /Refusing symlink input/
+  );
+  assert.equal(fs.existsSync(processedDir), false);
+});
 
-  assert.equal(result.processedFiles, 0);
-  assert.equal(fs.existsSync(path.join(processedDir, 'link.txt')), false);
+// --- Path containment hardening ---
+
+test('rejects raw and processed paths that differ only by case on Windows', t => {
+  if (process.platform !== 'win32') {
+    t.skip('case-insensitive path comparison applies to Windows only');
+    return;
+  }
+
+  const { rawDir } = makeTempWorkspace();
+  const upperCaseRawAlias = path.join(path.dirname(rawDir), 'RAW');
+
+  assert.throws(
+    () => processRawDirectory({ rawDir, processedDir: upperCaseRawAlias }),
+    /must not be the same or nested/
+  );
+});
+
+test('rejects a differently-cased alias of a directory nested in the other on Windows', t => {
+  if (process.platform !== 'win32') {
+    t.skip('case-insensitive path comparison applies to Windows only');
+    return;
+  }
+
+  const { rawDir, processedDir } = makeTempWorkspace();
+  const upperCaseNestedProcessed = path.join(path.dirname(rawDir), 'RAW', 'out');
+  const upperCaseRawAlias = path.join(path.dirname(rawDir), 'RAW');
+
+  assert.throws(
+    () => processRawDirectory({ rawDir, processedDir: upperCaseNestedProcessed }),
+    /must not be the same or nested/
+  );
+  assert.throws(
+    () => processRawDirectory({ rawDir: upperCaseRawAlias, processedDir: path.join(rawDir, 'out') }),
+    /must not be the same or nested/
+  );
+});
+
+test('rejects "." and ".." aliases resolving to the same directory', () => {
+  const { rawDir } = makeTempWorkspace();
+  const dottedRawAlias = path.join(rawDir, '..', 'raw', '.');
+
+  assert.throws(
+    () => processRawDirectory({ rawDir, processedDir: dottedRawAlias }),
+    /must not be the same or nested/
+  );
+});
+
+test('allows sibling directories whose names merely share a prefix', () => {
+  const { root, rawDir } = makeTempWorkspace();
+  const similarSibling = path.join(root, 'raw2');
+  writeRawFile(rawDir, 'chat.txt', 'โทร 0812345678\n');
+
+  const result = processRawDirectory({ rawDir, processedDir: similarSibling });
+
+  assert.equal(result.processedFiles, 1);
+  assert.equal(fs.readFileSync(path.join(similarSibling, 'chat.txt'), 'utf8'), 'โทร [PHONE]\n');
+});
+
+test('rejects output inside the workspace knowledge/raw/ without creating anything', () => {
+  const { rawDir } = makeTempWorkspace();
+  const { DEFAULT_RAW_DIR } = require('../scripts/deidentify');
+  writeRawFile(rawDir, 'chat.txt', 'โทร 0812345678\n');
+
+  assert.throws(
+    () => processRawDirectory({ rawDir, processedDir: DEFAULT_RAW_DIR }),
+    /Refusing to write output inside knowledge\/raw\//
+  );
+  assert.throws(
+    () => processRawDirectory({ rawDir, processedDir: path.join(DEFAULT_RAW_DIR, 'nested') }),
+    /Refusing to write output inside knowledge\/raw\//
+  );
+});
+
+test('leaves no output or temp artifacts after a rejection', () => {
+  const { rawDir, processedDir } = makeTempWorkspace();
+  writeRawFile(rawDir, 'a.txt', 'โทร 0812345678\n');
+  writeRawFile(rawDir, 'b.txt', 'โทร 0899998888\n');
+  fs.mkdirSync(processedDir, { recursive: true });
+  fs.writeFileSync(path.join(processedDir, 'b.txt'), 'existing\n', 'utf8');
+
+  assert.throws(
+    () => processRawDirectory({ rawDir, processedDir }),
+    /Refusing to overwrite/
+  );
+  assert.deepEqual(fs.readdirSync(processedDir).sort(), ['b.txt']);
+  assert.equal(fs.readFileSync(path.join(processedDir, 'b.txt'), 'utf8'), 'existing\n');
 });
 
 test('dry run reports planned files without writing anything', () => {
