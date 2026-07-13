@@ -80,6 +80,41 @@ const fixtures = {
       items: [{ id: 'obj-price', topic: '', objection_th: '', response_th: '', status: 'active' }]
     }
   },
+  'processed_conversations.schema.json': {
+    valid: {
+      schema_version: '1.0',
+      items: [
+        {
+          id: 'processed_conversation_0123456789abcdef01234567',
+          schema_version: '1.0',
+          source_ref: '2026/07/chat.txt',
+          source_path: '2026/07/chat.txt',
+          content_sha256: 'a'.repeat(64),
+          normalized_at: '2026-07-13T00:00:00.000Z',
+          status: 'normalized',
+          messages: [
+            { index: 0, speaker: 'customer', text: 'synthetic message' },
+            { index: 1, speaker: 'unknown', text: '' }
+          ]
+        }
+      ]
+    },
+    invalid: {
+      schema_version: '1.0',
+      items: [
+        {
+          id: 'processed-conversation-bad',
+          schema_version: '1.0',
+          source_ref: '../raw/chat.txt',
+          source_path: '../raw/chat.txt',
+          content_sha256: 'bad',
+          normalized_at: 'not-a-date',
+          status: 'approved',
+          messages: [{ index: -1, speaker: '', text: 'x' }]
+        }
+      ]
+    }
+  },
   'products.schema.json': {
     valid: {
       schema_version: '1.0',
