@@ -7,6 +7,30 @@ const Ajv2020 = require('ajv/dist/2020');
 const schemaDir = path.join(__dirname, '..', 'knowledge', 'datasets', 'schemas');
 
 const fixtures = {
+  'candidate_file.schema.json': {
+    valid: {
+      schema_version: '1.0',
+      run_id: 'run_0123456789abcdef',
+      dataset: 'intents',
+      candidates: [
+        {
+          candidate_id: 'cand_0123456789abcdef01234567',
+          dataset: 'intents',
+          rule_id: 'intent_price_question',
+          rule_version: 1,
+          source_ref: 'src_0123456789abcdef',
+          message_indexes: [0],
+          payload: { id: 'ask_price' }
+        }
+      ]
+    },
+    invalid: {
+      schema_version: '1.0',
+      run_id: 'bad-run',
+      dataset: 'intents',
+      candidates: []
+    }
+  },
   'conversation_outcomes.schema.json': {
     valid: {
       schema_version: '1.0',
@@ -160,6 +184,86 @@ const fixtures = {
           status: 'active'
         }
       ]
+    }
+  },
+  'review_decisions.schema.json': {
+    valid: {
+      schema_version: '1.0',
+      run_id: 'run_0123456789abcdef',
+      reviewed_by: 'synthetic-reviewer',
+      decisions: [
+        {
+          candidate_id: 'cand_0123456789abcdef01234567',
+          decision: 'accept'
+        }
+      ]
+    },
+    invalid: {
+      schema_version: '1.0',
+      run_id: 'run_0123456789abcdef',
+      reviewed_by: 'synthetic-reviewer',
+      decisions: [
+        {
+          candidate_id: 'cand_0123456789abcdef01234567',
+          decision: 'edit'
+        }
+      ]
+    }
+  },
+  'rule_bundle.schema.json': {
+    valid: {
+      schema_version: '1.0',
+      dataset: 'intents',
+      rules: [
+        {
+          rule_id: 'intent_price_question',
+          rule_version: 1,
+          kind: 'keyword_any',
+          enabled: true,
+          match: { keywords: ['price'] },
+          emit: { intent: 'ask_price' }
+        }
+      ]
+    },
+    invalid: {
+      schema_version: '1.0',
+      dataset: 'unknown',
+      rules: []
+    }
+  },
+  'run_manifest.schema.json': {
+    valid: {
+      schema_version: '1.0',
+      run_id: 'run_0123456789abcdef',
+      identity: {
+        pipeline_version: '2.0',
+        extractor_version: '1.0.0',
+        input_sha256: 'a'.repeat(64),
+        requested_datasets: ['intents'],
+        rule_bundles: {
+          intents: {
+            sha256: 'b'.repeat(64),
+            rule_count: 1
+          }
+        }
+      },
+      info: {
+        generated_at: '2026-07-30T12:00:00.000Z',
+        node_version: 'v24.18.1',
+        candidate_files: [
+          {
+            path: 'knowledge/datasets/candidates/intents.json',
+            sha256: 'c'.repeat(64),
+            candidate_count: 1
+          }
+        ]
+      }
+    },
+    invalid: {
+      schema_version: '1.0',
+      run_id: 'bad-run',
+      identity: {},
+      info: {}
     }
   },
   'vocabulary.schema.json': {

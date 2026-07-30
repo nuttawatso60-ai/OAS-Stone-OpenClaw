@@ -1,0 +1,79 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/datasets/schemas/rule_bundle.schema.json",
+  "title": "Extraction Rule Bundle",
+  "type": "object",
+  "required": ["schema_version", "dataset", "rules"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "dataset": { "$ref": "#/$defs/dataset" },
+    "rules": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "rule_id",
+          "rule_version",
+          "kind",
+          "enabled",
+          "match",
+          "emit"
+        ],
+        "properties": {
+          "rule_id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]{0,63}$"
+          },
+          "rule_version": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "kind": {
+            "enum": [
+              "exact_phrase",
+              "keyword_any",
+              "keyword_all",
+              "regex_anchored",
+              "numeric_pattern"
+            ]
+          },
+          "enabled": { "type": "boolean" },
+          "match": { "$ref": "#/$defs/jsonObject" },
+          "emit": { "$ref": "#/$defs/jsonObject" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "dataset": {
+      "enum": [
+        "intents",
+        "faq",
+        "objections",
+        "quotations",
+        "products",
+        "vocabulary",
+        "conversation_outcomes"
+      ]
+    },
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/jsonValue" }
+        },
+        { "$ref": "#/$defs/jsonObject" }
+      ]
+    }
+  }
+}
