@@ -16,7 +16,7 @@ const {
 } = require('../scripts/lib/extraction/path_safety');
 
 function makeTempDir() {
-  return fs.mkdtempSync(path.join(os.tmpdir(), 'extraction-core-'));
+  return fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'extraction-core-')));
 }
 
 // Creates a directory link for symlink tests. Windows refuses plain symlinks
