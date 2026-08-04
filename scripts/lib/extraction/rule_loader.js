@@ -8,6 +8,7 @@ const {
   compileSchema,
   validateDocument
 } = require('./schema_validator');
+const { validateRuleDefinition } = require('./rule_engine');
 
 const RULE_BUNDLE_HASH_DOMAIN = 'rule_bundle:v1:';
 const RULE_BUNDLE_SCHEMA_PATH = path.join(
@@ -32,6 +33,38 @@ function summarizeValidationErrors(errors) {
     .join(', ');
 }
 
+// The bundle schema admits any JSON number inside `match` and `emit`, but
+// canonical JSON is integer-only, so a schema-valid bundle carrying a float or
+// an unsafe integer would otherwise fail deep inside hashing with an opaque
+// TypeError. Rejecting it here keeps the failure a rule-bundle error and names
+// the offending field. Note JSON.parse maps 1.0 to the integer 1, so the
+// contract is "integer-valued", not "written without a decimal point".
+function validateCanonicalNumbers(value, pointer) {
+  if (Array.isArray(value)) {
+    value.forEach((item, index) => validateCanonicalNumbers(item, `${pointer}/${index}`));
+    return;
+  }
+  if (value !== null && typeof value === 'object') {
+    for (const key of Object.keys(value)) {
+      validateCanonicalNumbers(value[key], `${pointer}/${key}`);
+    }
+    return;
+  }
+  if (typeof value !== 'number') {
+    return;
+  }
+  if (!Number.isInteger(value)) {
+    throw new Error(
+      `Rule bundle number at ${pointer} must be an integer; canonical JSON does not support floats`
+    );
+  }
+  if (!Number.isSafeInteger(value)) {
+    throw new Error(
+      `Rule bundle number at ${pointer} is outside the safe integer range`
+    );
+  }
+}
+
 function validateRuleSemantics(document) {
   const seenRuleIds = new Set();
 
@@ -44,7 +77,21 @@ function validateRuleSemantics(document) {
     if (!Number.isInteger(rule.rule_version) || rule.rule_version < 1) {
       throw new Error(`Rule "${rule.rule_id}" has an invalid rule_version`);
     }
+
+    // Every rule is validated, enabled or not: a disabled rule is still hashed
+    // into the bundle, so an unsafe pattern must fail at load rather than when
+    // the flag is flipped.
+    try {
+      validateRuleDefinition(rule);
+    } catch (error) {
+      throw new Error(
+        `Rule "${rule.rule_id}" has an invalid match: ${error.message}`,
+        { cause: error }
+      );
+    }
   }
+
+  validateCanonicalNumbers(document, '');
 
   for (let index = 1; index < document.rules.length; index += 1) {
     const previous = document.rules[index - 1].rule_id;
@@ -60,7 +107,22 @@ function loadRuleBundle(bundlePath) {
   try {
     document = loadSchema(bundlePath);
   } catch (error) {
-    throw new Error(`Failed to load rule bundle: ${error.message}`, { cause: error });
+    // V8's JSON.parse messages embed a window of the raw source
+    // (`Unexpected token 'x', ..."api_key":"secret"... is not valid JSON`), so
+    // the parser message is never forwarded. Only the failure class and the
+    // path are reported.
+    let reason;
+    if (error.cause === undefined) {
+      reason = error.message;
+    } else if (error.cause.code !== undefined) {
+      reason = `file cannot be read (${error.cause.code})`;
+    } else {
+      reason = 'file is not valid JSON';
+    }
+    throw new Error(
+      `Failed to load rule bundle "${bundlePath}": ${reason}`,
+      { cause: error }
+    );
   }
 
   const schema = loadSchema(RULE_BUNDLE_SCHEMA_PATH);

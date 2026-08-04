@@ -3,6 +3,14 @@
 const REGEX_MAX_PATTERN_LENGTH = 256;
 const REGEX_MAX_TEXT_LENGTH = 4096;
 const REGEX_MAX_BOUNDED_QUANTIFIER = 100;
+// Upper bound on the number of distinct ways a pattern's quantifiers and
+// alternations can be assigned. Patterns are anchored at ^ so the engine has a
+// single start position, which makes this product an upper bound on the paths a
+// backtracking engine explores. Rejecting unbounded quantifiers and quantified
+// groups is not sufficient on its own: adjacent bounded quantifiers over the
+// same atom (^a{0,100}a{0,100}...$) are individually legal yet multiply into
+// exponential backtracking, so the budget is enforced across the whole pattern.
+const REGEX_MAX_SEARCH_BUDGET = 1000;
 
 const RULE_KINDS = new Set([
   'exact_phrase',
@@ -288,6 +296,25 @@ function validateSafeRegexPattern(pattern) {
   }
 
   const body = normalized.slice(1, -1);
+  // One frame per open group. `current` is the product of the factors seen so
+  // far in the active alternation branch; `alternatives` accumulates the cost of
+  // completed branches. A group's cost is alternatives + current, which is
+  // multiplied into the enclosing frame when the group closes. Group boundaries
+  // are therefore transparent: (?:a{0,100})(?:a{0,100}) costs the same as
+  // a{0,100}a{0,100}.
+  const budgetFrames = [{ alternatives: 0, current: 1 }];
+  const multiplyBudget = factor => {
+    const frame = budgetFrames.at(-1);
+    frame.current *= factor;
+    // Every factor is >= 1 and enclosing frames only ever multiply, so a frame
+    // exceeding the budget can never be brought back under it.
+    if (frame.current > REGEX_MAX_SEARCH_BUDGET) {
+      throw new Error(
+        `rule.match.pattern exceeds the backtracking budget of ${REGEX_MAX_SEARCH_BUDGET}`
+      );
+    }
+  };
+
   let depth = 0;
   let inClass = false;
   let classHasContent = false;
@@ -372,6 +399,7 @@ function validateSafeRegexPattern(pattern) {
         index += 2;
       }
       depth += 1;
+      budgetFrames.push({ alternatives: 0, current: 1 });
       previousCanQuantify = false;
       previousWasGroup = false;
       previousWasQuantifier = false;
@@ -382,6 +410,8 @@ function validateSafeRegexPattern(pattern) {
         throw new Error('rule.match.pattern contains an unmatched group');
       }
       depth -= 1;
+      const closed = budgetFrames.pop();
+      multiplyBudget(closed.alternatives + closed.current);
       previousCanQuantify = true;
       previousWasGroup = true;
       previousWasQuantifier = false;
@@ -391,6 +421,9 @@ function validateSafeRegexPattern(pattern) {
       if (depth === 0 || !previousCanQuantify) {
         throw new Error('rule.match.pattern alternation must be inside a group');
       }
+      const frame = budgetFrames.at(-1);
+      frame.alternatives += frame.current;
+      frame.current = 1;
       previousCanQuantify = false;
       previousWasGroup = false;
       previousWasQuantifier = false;
@@ -400,6 +433,7 @@ function validateSafeRegexPattern(pattern) {
       if (!previousCanQuantify || previousWasGroup || previousWasQuantifier) {
         throw new Error('rule.match.pattern contains an unsafe optional quantifier');
       }
+      multiplyBudget(2);
       previousWasQuantifier = true;
       previousCanQuantify = false;
       continue;
@@ -429,6 +463,7 @@ function validateSafeRegexPattern(pattern) {
           `rule.match.pattern quantifiers must be bounded at ${REGEX_MAX_BOUNDED_QUANTIFIER}`
         );
       }
+      multiplyBudget(maximum - minimum + 1);
       index = end;
       previousWasQuantifier = true;
       previousCanQuantify = false;
@@ -449,6 +484,13 @@ function validateSafeRegexPattern(pattern) {
     (!previousCanQuantify && !previousWasQuantifier)
   ) {
     throw new Error('rule.match.pattern has an incomplete regex structure');
+  }
+
+  const total = budgetFrames[0].alternatives + budgetFrames[0].current;
+  if (total > REGEX_MAX_SEARCH_BUDGET) {
+    throw new Error(
+      `rule.match.pattern exceeds the backtracking budget of ${REGEX_MAX_SEARCH_BUDGET}`
+    );
   }
 
   return normalized;
@@ -485,8 +527,21 @@ function compileNumericPattern(match) {
 }
 
 function nextCodePoint(value, index) {
-  return Array.from(value.slice(index))[0] || '';
+  if (index >= value.length) {
+    return '';
+  }
+  // Slicing the remainder here would make numericMatches quadratic in text
+  // length; codePointAt is O(1) and still returns a whole code point.
+  return String.fromCodePoint(value.codePointAt(index));
 }
+
+// A digit, comma, or period immediately before a match means the match is a
+// fragment of a longer numeric literal. Capturing it would emit a wrong value
+// rather than no value: "12.34 บาท" under `integer` would yield 34, and
+// "1,000 บาท" would yield 000. "-" is deliberately excluded so that ranges such
+// as "100-200 บาท" still capture 200; numbers are unsigned by contract.
+const NUMERIC_LEFT_BOUNDARY = /[0-9.,]/;
+const NUMERIC_RIGHT_BOUNDARY = /[\p{L}\p{N}\p{M}_]/u;
 
 function numericMatches(text, regex) {
   const matches = [];
@@ -496,7 +551,7 @@ function numericMatches(text, regex) {
     const previous = match.index === 0 ? '' : text[match.index - 1];
     const end = match.index + match[0].length;
     const next = nextCodePoint(text, end);
-    if (/[0-9]/.test(previous) || /[\p{L}\p{N}\p{M}_]/u.test(next)) {
+    if (NUMERIC_LEFT_BOUNDARY.test(previous) || NUMERIC_RIGHT_BOUNDARY.test(next)) {
       continue;
     }
     matches.push({
@@ -509,13 +564,22 @@ function numericMatches(text, regex) {
   return matches;
 }
 
+// Validates a rule's shape and match without evaluating it. `enabled` is not
+// consulted: a disabled rule is still part of the hashed bundle, so an invalid
+// or unsafe match must not be able to hide behind `enabled: false` and only
+// surface when someone flips the flag.
+function validateRuleDefinition(rule) {
+  validateRule(rule);
+  validateMatch(rule);
+}
+
 function evaluateRule(rule, conversation) {
   validateRule(rule);
+  const match = validateMatch(rule);
   if (!rule.enabled) {
     return [];
   }
 
-  const match = validateMatch(rule);
   const messages = normalizedMessages(conversation);
   const contexts = matchingContexts(messages, match);
   const results = [];
@@ -587,7 +651,7 @@ function evaluateBundle(rules, conversation) {
 
   const results = [];
   for (const rule of rules) {
-    validateRule(rule);
+    validateRuleDefinition(rule);
     if (!rule.enabled) {
       continue;
     }
@@ -601,6 +665,8 @@ function evaluateBundle(rules, conversation) {
 
 module.exports = {
   REGEX_MAX_TEXT_LENGTH,
+  REGEX_MAX_SEARCH_BUDGET,
+  validateRuleDefinition,
   evaluateRule,
   evaluateBundle
 };

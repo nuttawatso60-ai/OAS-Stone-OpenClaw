@@ -152,8 +152,111 @@ test('loadRuleBundle reports missing files and invalid JSON clearly', () => {
   const missingPath = path.join(directory, 'missing.json');
   const invalidPath = writeBundle(directory, 'invalid.json', '{"schema_version":');
 
-  assert.throws(() => loadRuleBundle(missingPath), /Failed to load rule bundle/);
-  assert.throws(() => loadRuleBundle(invalidPath), /Failed to parse schema/);
+  assert.throws(() => loadRuleBundle(missingPath), /file cannot be read \(ENOENT\)/);
+  assert.throws(() => loadRuleBundle(invalidPath), /file is not valid JSON/);
+});
+
+test('loadRuleBundle never echoes raw bundle bytes in JSON parse errors', () => {
+  const directory = makeTempDir();
+  // V8's own JSON.parse message embeds a window of the source text, e.g.
+  // `Unexpected token 'U', ..."line_id": U8f3a9cust"... is not valid JSON`.
+  // Forwarding it would put bundle contents into logs.
+  const malformed = {
+    'secret-adjacent-to-error.json':
+      '{"schema_version":"1.0","customer_phone":"+66812345678","dataset":,"rules":[]}',
+    'unquoted-value.json': '{"line_id": U8f3a9customer_secret}',
+    'truncated.json': '{"rules":[{"emit":{"api_key":"SUPER_SECRET_TOKEN"}}'
+  };
+
+  for (const [fileName, raw] of Object.entries(malformed)) {
+    assert.throws(
+      () => loadRuleBundle(writeBundle(directory, fileName, raw)),
+      error => {
+        assert.match(error.message, /file is not valid JSON/);
+        assert.doesNotMatch(error.message, /SUPER_SECRET_TOKEN/);
+        assert.doesNotMatch(error.message, /customer_secret/);
+        assert.doesNotMatch(error.message, /66812345678/);
+        assert.doesNotMatch(error.message, /api_key|line_id|customer_phone/);
+        return true;
+      }
+    );
+  }
+});
+
+test('loadRuleBundle rejects numbers canonical JSON cannot hash', () => {
+  const directory = makeTempDir();
+  // The bundle schema admits any JSON number under emit, but canonical JSON is
+  // integer-only. Without an explicit check this surfaces as an opaque
+  // TypeError from deep inside hashing.
+  const float = makeBundle([
+    makeRule('a_rule', 'exact_phrase', { phrase: 'x' }, { emit: { confidence: 0.9 } })
+  ]);
+  const nested = makeBundle([
+    makeRule('a_rule', 'exact_phrase', { phrase: 'x' }, { emit: { a: [1, { b: 2.5 }] } })
+  ]);
+  const unsafe = makeBundle([
+    makeRule('a_rule', 'exact_phrase', { phrase: 'x' }, { emit: { n: 1e21 } })
+  ]);
+
+  assert.throws(
+    () => loadRuleBundle(writeBundle(directory, 'float.json', float)),
+    /number at \/rules\/0\/emit\/confidence must be an integer/
+  );
+  assert.throws(
+    () => loadRuleBundle(writeBundle(directory, 'nested.json', nested)),
+    /number at \/rules\/0\/emit\/a\/1\/b must be an integer/
+  );
+  assert.throws(
+    () => loadRuleBundle(writeBundle(directory, 'unsafe.json', unsafe)),
+    /outside the safe integer range/
+  );
+
+  // JSON.parse maps 1.0 to the integer 1, so integer-valued literals are fine.
+  const integral = makeBundle([
+    makeRule('a_rule', 'exact_phrase', { phrase: 'x' }, { emit: { n: 1.0 } })
+  ]);
+  assert.match(
+    loadRuleBundle(writeBundle(directory, 'integral.json', integral)).bundle_sha256,
+    /^[a-f0-9]{64}$/
+  );
+});
+
+test('loadRuleBundle validates disabled rules instead of deferring to evaluation', () => {
+  const directory = makeTempDir();
+  // A disabled rule is still hashed into the bundle, so an unsafe or malformed
+  // match must fail at load rather than when someone flips enabled to true.
+  const disabledUnsafe = makeBundle([
+    makeRule('a_rule', 'regex_anchored', { pattern: '.*' }, { enabled: false })
+  ]);
+  const disabledEmpty = makeBundle([
+    makeRule('a_rule', 'exact_phrase', {}, { enabled: false })
+  ]);
+  const undocumentedField = makeBundle([
+    makeRule('a_rule', 'exact_phrase', { phrase: 'p', window: 3 })
+  ]);
+
+  assert.throws(
+    () => loadRuleBundle(writeBundle(directory, 'disabled-unsafe.json', disabledUnsafe)),
+    /Rule "a_rule" has an invalid match: .*anchored/
+  );
+  assert.throws(
+    () => loadRuleBundle(writeBundle(directory, 'disabled-empty.json', disabledEmpty)),
+    /Rule "a_rule" has an invalid match/
+  );
+  // The bundle schema accepts any object under match; the engine's closed
+  // per-kind field set is what stops an undocumented mini-language forming.
+  assert.throws(
+    () => loadRuleBundle(writeBundle(directory, 'undocumented.json', undocumentedField)),
+    /unsupported field "window"/
+  );
+
+  const valid = makeBundle([
+    makeRule('a_rule', 'exact_phrase', { phrase: 'p' }, { enabled: false })
+  ]);
+  assert.equal(
+    loadRuleBundle(writeBundle(directory, 'valid-disabled.json', valid)).rules[0].enabled,
+    false
+  );
 });
 
 test('loadRuleBundle does not mutate source bytes or retain mutable source state', () => {
@@ -333,6 +436,105 @@ test('regex_anchored rejects unbounded and unsafe bounded constructs', () => {
   }
 });
 
+test('regex_anchored rejects patterns exceeding the backtracking budget', () => {
+  const conversation = makeConversation([message(0, 'customer', 'aaaa')]);
+  // Each of these passes the anchor, wildcard, unbounded-quantifier and
+  // quantified-group checks. Adjacent bounded quantifiers over the same atom
+  // still multiply into exponential backtracking: before the budget existed,
+  // the 42-character '^a{0,100}'.repeat(5) pattern took ~48s on a 201-char
+  // message. Group wrapping must not launder the cost either.
+  const budgetBusters = [
+    '^a{0,100}a{0,100}$',
+    `^${'a{0,100}'.repeat(5)}$`,
+    `^${'a{0,100}'.repeat(31)}$`,
+    `^${'a?'.repeat(60)}a{60}$`,
+    `^${'[0-9]?'.repeat(40)}$`,
+    `^${'(?:a{0,100})'.repeat(5)}$`
+  ];
+
+  for (const pattern of budgetBusters) {
+    assert.ok(pattern.length <= 256, `pattern must fit the length cap: ${pattern.length}`);
+    const rule = makeRule('budget_buster', 'regex_anchored', { pattern });
+    assert.throws(() => evaluateRule(rule, conversation), /backtracking budget/);
+  }
+});
+
+test('regex_anchored still accepts realistic patterns within the budget', () => {
+  const conversation = makeConversation([message(0, 'customer', 'ราคา 123')]);
+  const allowed = [
+    '^(ราคา|price)[ ]?\\d{1,3}$',
+    '^(a|b|c|d|e|f|g|h|i|j|k)$',
+    '^a{0,100}$',
+    '^a{0,99}a{0,9}$',
+    `^${'a{100}'.repeat(41)}$`
+  ];
+
+  for (const pattern of allowed) {
+    const rule = makeRule('within_budget', 'regex_anchored', { pattern });
+    assert.doesNotThrow(() => evaluateRule(rule, conversation), `rejected: ${pattern}`);
+  }
+
+  // The whole point of the budget is bounded work, not just bounded syntax.
+  const worstCase = makeRule('worst_case', 'regex_anchored', { pattern: '^a{0,99}a{0,9}$' });
+  const atCap = makeConversation([
+    message(0, 'customer', 'a'.repeat(REGEX_MAX_TEXT_LENGTH))
+  ]);
+  const started = process.hrtime.bigint();
+  assert.deepEqual(evaluateRule(worstCase, atCap), []);
+  const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+  assert.ok(elapsedMs < 1000, `worst legal pattern took ${elapsedMs}ms`);
+});
+
+test('regex_anchored anchors to the whole message, not to line boundaries', () => {
+  // JavaScript's $ without the m flag already means \z, so no \z emulation is
+  // needed. Flags are restricted to i/u, which keeps it that way.
+  const rule = makeRule('whole_message', 'regex_anchored', { pattern: '^abc$' });
+  const nonMatching = ['abc\ndef', 'abc\n', 'abc\r\n', 'abc\r', '\nabc'];
+
+  for (const text of nonMatching) {
+    assert.deepEqual(
+      evaluateRule(rule, makeConversation([message(0, 'customer', text)])),
+      [],
+      `expected no match for ${JSON.stringify(text)}`
+    );
+  }
+
+  assert.equal(
+    evaluateRule(rule, makeConversation([message(0, 'customer', 'abc')])).length,
+    1
+  );
+});
+
+test('regex_anchored applies the length cap to NFC text at an exact boundary', () => {
+  const rule = makeRule('cap_edge', 'regex_anchored', { pattern: '^a{0,99}a{0,9}$' });
+  const evaluated = evaluateRule(
+    rule,
+    makeConversation([message(0, 'customer', 'a'.repeat(REGEX_MAX_TEXT_LENGTH))])
+  );
+  const skipped = evaluateRule(
+    rule,
+    makeConversation([message(0, 'customer', 'a'.repeat(REGEX_MAX_TEXT_LENGTH + 1))])
+  );
+
+  // Both are non-matches, but the cap must be an all-or-nothing skip rather
+  // than a truncation that could match a prefix.
+  assert.deepEqual(evaluated, []);
+  assert.deepEqual(skipped, []);
+
+  // The cap counts UTF-16 code units of the NFC-normalized text, so a decomposed
+  // source string is measured after composition, not before.
+  const decomposed = 'é'.repeat(REGEX_MAX_TEXT_LENGTH / 2);
+  assert.equal(decomposed.length, REGEX_MAX_TEXT_LENGTH);
+  assert.equal(decomposed.normalize('NFC').length, REGEX_MAX_TEXT_LENGTH / 2);
+  assert.deepEqual(
+    evaluateRule(
+      makeRule('nfc_cap', 'regex_anchored', { pattern: '^é{0,100}$' }),
+      makeConversation([message(0, 'customer', decomposed)])
+    ),
+    []
+  );
+});
+
 test('regex_anchored skips text exceeding the documented safety cap', () => {
   const repetitions = Math.floor(REGEX_MAX_TEXT_LENGTH / 100) + 2;
   const pattern = `^${'a{100}'.repeat(repetitions)}$`;
@@ -398,6 +600,219 @@ test('numeric_pattern rejects numbers without an allowed unit', () => {
   ]);
 
   assert.deepEqual(evaluateRule(rule, conversation), []);
+});
+
+test('numeric_pattern never captures a fragment of a longer numeric literal', () => {
+  // Capturing a fragment emits a wrong value rather than no value: "12.34 บาท"
+  // under the integer pattern used to yield 34, and "1,000 บาท" yielded 000.
+  const fragments = [
+    ['integer', 'ราคา 1,000 บาท'],
+    ['integer', 'ราคา 12.34 บาท'],
+    ['integer', 'ราคา .50 บาท'],
+    ['decimal', 'ราคา 1,000.50 บาท']
+  ];
+
+  for (const [numberPattern, text] of fragments) {
+    const rule = makeRule('fragment_guard', 'numeric_pattern', {
+      number_pattern: numberPattern,
+      units: ['บาท']
+    });
+    assert.deepEqual(
+      evaluateRule(rule, makeConversation([message(0, 'agent', text)])),
+      [],
+      `expected no capture for ${text} under ${numberPattern}`
+    );
+  }
+
+  // The matching pattern still captures the whole literal.
+  const grouped = makeRule('grouped_ok', 'numeric_pattern', {
+    number_pattern: 'grouped',
+    units: ['บาท']
+  });
+  assert.deepEqual(
+    evaluateRule(grouped, makeConversation([message(0, 'agent', 'ราคา 1,000.50 บาท')]))[0].captures,
+    { literal: '1,000.50 บาท', number: '1,000.50', unit: 'บาท' }
+  );
+
+  // "-" stays a token separator so ranges still work; numbers are unsigned.
+  const integer = makeRule('range_ok', 'numeric_pattern', {
+    number_pattern: 'integer',
+    units: ['บาท']
+  });
+  assert.deepEqual(
+    evaluateRule(integer, makeConversation([message(0, 'agent', '100-200 บาท')]))
+      .map(entry => entry.captures.number),
+    ['200']
+  );
+});
+
+test('numeric_pattern treats configured units as literal data, not regex syntax', () => {
+  const conversation = makeConversation([
+    message(0, 'agent', 'ราคา 100 XX และ 200 .* และ 300 a|b')
+  ]);
+  const rule = makeRule('literal_units', 'numeric_pattern', {
+    number_pattern: 'integer',
+    units: ['.*', 'a|b', '(x)\\1']
+  });
+
+  // A unit used as regex syntax would let ".*" match "XX"; as literal data it
+  // only matches the two-character sequence ".*".
+  assert.deepEqual(
+    evaluateRule(rule, conversation).map(entry => entry.captures.unit),
+    ['.*', 'a|b']
+  );
+});
+
+test('numeric_pattern prefers the longest configured unit deterministically', () => {
+  const rule = makeRule('overlapping_units', 'numeric_pattern', {
+    number_pattern: 'integer',
+    units: ['บาท', 'บาท/ตร.ม.']
+  });
+
+  assert.deepEqual(
+    evaluateRule(rule, makeConversation([message(0, 'agent', '500 บาท/ตร.ม.')]))[0].captures,
+    { literal: '500 บาท/ตร.ม.', number: '500', unit: 'บาท/ตร.ม.' }
+  );
+});
+
+test('conversation message indexes are rejected rather than sorted around', () => {
+  const rule = makeRule('index_guard', 'exact_phrase', { phrase: 'x' });
+  const invalid = [
+    [[message(1, 'customer', 'x'), message(1, 'customer', 'y')], /indexes must be unique/],
+    [[message(-1, 'customer', 'x')], /must be non-negative/],
+    [[message(1.5, 'customer', 'x')], /must be non-negative/],
+    [[{ speaker: 'customer', text: 'x' }], /must be non-negative/],
+    [[{ index: '1', speaker: 'customer', text: 'x' }], /must be non-negative/],
+    [[{ index: 0, text: 'x' }], /speaker must be a string/]
+  ];
+
+  for (const [messages, expected] of invalid) {
+    assert.throws(() => evaluateRule(rule, makeConversation(messages)), expected);
+  }
+
+  // Duplicate indexes are rejected outright, so evaluation order never depends
+  // on sort stability for equal keys.
+  assert.deepEqual(evaluateRule(rule, makeConversation([])), []);
+});
+
+test('exact_phrase yields one match per message regardless of repetition', () => {
+  const rule = makeRule('repeat_phrase', 'exact_phrase', { phrase: 'ab' });
+  const conversation = makeConversation([message(0, 'customer', 'ab ab ab')]);
+
+  // exact_phrase is a membership test, not an occurrence scan. numeric_pattern
+  // is the only kind that emits one match per occurrence.
+  assert.deepEqual(evaluateRule(rule, conversation), [
+    { message_indexes: [0], captures: { phrase: 'ab' } }
+  ]);
+
+  const numeric = makeRule('repeat_numeric', 'numeric_pattern', {
+    number_pattern: 'integer',
+    units: ['บาท']
+  });
+  assert.equal(
+    evaluateRule(numeric, makeConversation([message(0, 'agent', '100 บาท 100 บาท')])).length,
+    2
+  );
+});
+
+test('adjacent_to means array-neighbour after sorting, not index plus or minus one', () => {
+  const rule = makeRule('gap_adjacent', 'exact_phrase', {
+    phrase: 'x',
+    adjacent_to: { speaker: 'agent' }
+  });
+  // Indexes 1 and 9 are neighbours because nothing sits between them once the
+  // messages are ordered. Gaps in the index sequence do not break adjacency.
+  const withGap = makeConversation([message(9, 'customer', 'x'), message(1, 'agent', 'q')]);
+  const shuffled = makeConversation([message(1, 'agent', 'q'), message(9, 'customer', 'x')]);
+
+  assert.deepEqual(evaluateRule(rule, withGap), [
+    { message_indexes: [1, 9], captures: { phrase: 'x' } }
+  ]);
+  assert.deepEqual(evaluateRule(rule, shuffled), evaluateRule(rule, withGap));
+
+  // direction "either" with a qualifying neighbour on both sides emits one
+  // match per neighbour, each carrying its own message_indexes pair.
+  const bothSides = makeConversation([
+    message(0, 'agent', 'q'),
+    message(1, 'customer', 'x'),
+    message(2, 'agent', 'q')
+  ]);
+  assert.deepEqual(
+    evaluateRule(rule, bothSides).map(entry => entry.message_indexes),
+    [[0, 1], [1, 2]]
+  );
+
+  // Edges yield nothing rather than wrapping around.
+  const first = makeRule('needs_previous', 'exact_phrase', {
+    phrase: 'x',
+    adjacent_to: { speaker: 'agent', direction: 'previous' }
+  });
+  assert.deepEqual(
+    evaluateRule(first, makeConversation([message(0, 'customer', 'x'), message(1, 'agent', 'q')])),
+    []
+  );
+
+  // adjacent_to has a closed field set; it is not an extension point.
+  for (const [constraint, expected] of [
+    [{ direction: 'next' }, /adjacent_to.speaker must be a string/],
+    [{ speaker: 'a', window: 3 }, /unsupported field "window"/],
+    [{ speaker: 'a', direction: 'both' }, /previous, next, or either/],
+    [{ speaker: ['a', 'b'] }, /adjacent_to.speaker must be a string/]
+  ]) {
+    const invalid = makeRule('bad_adjacent', 'exact_phrase', {
+      phrase: 'x',
+      adjacent_to: constraint
+    });
+    assert.throws(
+      () => evaluateRule(invalid, makeConversation([message(0, 'customer', 'x')])),
+      expected
+    );
+  }
+});
+
+test('closing position follows numeric order and never infers speakers', () => {
+  const closing = makeRule('closing_rule', 'exact_phrase', {
+    phrase: 'x',
+    position: 'closing'
+  });
+
+  assert.deepEqual(evaluateRule(closing, makeConversation([])), []);
+  assert.deepEqual(
+    evaluateRule(closing, makeConversation([message(9, 'customer', 'x'), message(1, 'customer', 'x')]))
+      .map(entry => entry.message_indexes),
+    [[9]]
+  );
+
+  // Speaker matching is exact: no case folding and no inference.
+  const speakerRule = makeRule('speaker_exact', 'exact_phrase', {
+    phrase: 'x',
+    speaker: 'Customer'
+  });
+  assert.deepEqual(
+    evaluateRule(speakerRule, makeConversation([message(0, 'customer', 'x')])),
+    []
+  );
+  assert.throws(
+    () => evaluateRule(
+      makeRule('speaker_type', 'exact_phrase', { phrase: 'x', speaker: ['a', 'b'] }),
+      makeConversation([message(0, 'customer', 'x')])
+    ),
+    /speaker must be a string/
+  );
+});
+
+test('an invalid match is rejected even when the rule is disabled', () => {
+  // Otherwise an unsafe pattern sits dormant in a hashed bundle and only fails
+  // when someone flips enabled to true.
+  const rule = makeRule('parked_rule', 'regex_anchored', { pattern: '.*' }, { enabled: false });
+  assert.throws(
+    () => evaluateRule(rule, makeConversation([message(0, 'customer', 'x')])),
+    /anchored/
+  );
+  assert.throws(
+    () => evaluateBundle([rule], makeConversation([message(0, 'customer', 'x')])),
+    /anchored/
+  );
 });
 
 test('evaluateBundle preserves enabled rule order and includes zero matches', () => {
