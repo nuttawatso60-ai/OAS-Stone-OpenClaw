@@ -110,7 +110,7 @@ function staffReply(text) {
   ].join('\n');
 }
 
-function createClaireTelegramBot({ client, allowedChatIds } = {}) {
+function createStaffTelegramBot({ client, allowedChatIds } = {}) {
   if (!client || typeof client.getUpdates !== 'function' || typeof client.sendMessage !== 'function') {
     throw new TelegramConfigError('Telegram client is required');
   }
@@ -152,9 +152,11 @@ function createClaireTelegramBot({ client, allowedChatIds } = {}) {
 module.exports = {
   TelegramApiError,
   TelegramConfigError,
-  claireReply: staffReply,
   staffReply,
   parseAllowedChatIds,
-  createClaireTelegramBot,
+  createStaffTelegramBot,
+  // Compatibility aliases for callers of the original module API.
+  claireReply: staffReply,
+  createClaireTelegramBot: createStaffTelegramBot,
   createTelegramClient
 };

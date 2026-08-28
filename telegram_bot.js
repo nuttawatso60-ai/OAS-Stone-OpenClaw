@@ -1,7 +1,7 @@
 const {
   TelegramApiError,
   TelegramConfigError,
-  createClaireTelegramBot,
+  createStaffTelegramBot,
   createTelegramClient,
   parseAllowedChatIds
 } = require('./tools/telegram_claire');
@@ -16,7 +16,7 @@ function sleep(ms) {
 async function main() {
   const client = createTelegramClient({ token: process.env.TELEGRAM_BOT_TOKEN });
   const allowedChatIds = parseAllowedChatIds(process.env.TELEGRAM_ALLOWED_CHAT_IDS);
-  const bot = createClaireTelegramBot({ client, allowedChatIds });
+  const bot = createStaffTelegramBot({ client, allowedChatIds });
   let stopped = false;
 
   const stop = () => {

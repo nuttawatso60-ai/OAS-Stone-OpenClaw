@@ -7,7 +7,7 @@ async function main() {
   const chats = collectChatIds(updates);
 
   if (chats.length === 0) {
-    console.log('No recent Telegram chats found. Send /start to the bot, then run this command again.');
+    console.log('No recent Telegram chats found. Send /start to the Staff Assistant, then run this command again.');
     return;
   }
 

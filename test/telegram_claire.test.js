@@ -6,9 +6,11 @@ const {
   TelegramConfigError,
   claireReply,
   createClaireTelegramBot,
+  createStaffTelegramBot,
   createTelegramClient,
   parseAllowedChatIds
 } = require('../tools/telegram_claire');
+const { collectChatIds } = require('../tools/telegram_chat_ids');
 
 test('Telegram client requires a bot token', () => {
   assert.throws(() => createTelegramClient({ token: '' }), TelegramConfigError);
@@ -19,6 +21,8 @@ test('Telegram allowed chat IDs fail closed when missing or malformed', () => {
   assert.throws(() => parseAllowedChatIds(''), TelegramConfigError);
   assert.throws(() => parseAllowedChatIds(), TelegramConfigError);
   assert.throws(() => parseAllowedChatIds('123,abc'), TelegramConfigError);
+  assert.throws(() => parseAllowedChatIds('123,,456'), TelegramConfigError);
+  assert.throws(() => parseAllowedChatIds('123.0'), TelegramConfigError);
   assert.deepEqual([...parseAllowedChatIds('123, -456,123')].sort(), ['-456', '123']);
 });
 
@@ -74,6 +78,12 @@ test('staff assistant replies to start/help with internal-tool text', () => {
   assert.equal(claireReply('/help'), claireReply('/start'));
 });
 
+test('canonical Staff Assistant API returns internal wording', () => {
+  assert.equal(createStaffTelegramBot, createClaireTelegramBot);
+  assert.match(claireReply('/help'), /Staff Assistant/);
+  assert.doesNotMatch(claireReply('/help'), /customer intake/i);
+});
+
 test('bot replies only to allowed chats and stays silent for outsiders', async () => {
   const sent = [];
   const batches = [[
@@ -95,6 +105,20 @@ test('bot replies only to allowed chats and stays silent for outsiders', async (
   assert.match(sent[0].text, /Staff Assistant/);
 });
 
+test('unauthorized chats produce no outbound request', async () => {
+  const sent = [];
+  const client = {
+    async getUpdates() {
+      return [{ update_id: 1, message: { chat: { id: 1000 }, text: '/price granite 30x20' } }];
+    },
+    async sendMessage(...args) { sent.push(args); }
+  };
+
+  const bot = createStaffTelegramBot({ client, allowedChatIds: new Set(['99']) });
+  await bot.pollOnce();
+  assert.deepEqual(sent, []);
+});
+
 test('bot requires a non-empty allowlist', () => {
   const client = { async getUpdates() { return []; }, async sendMessage() {} };
   assert.throws(() => createClaireTelegramBot({ client }), TelegramConfigError);
@@ -111,4 +135,20 @@ test('bot rejects malformed getUpdates results', async () => {
   });
 
   await assert.rejects(() => bot.pollOnce(), TelegramApiError);
+});
+
+test('chat ID discovery returns metadata without message contents', () => {
+  const token = '123:secret-token';
+  const chats = collectChatIds([
+    { update_id: 1, message: { chat: { id: 99, type: 'private', username: 'staff' }, text: token } },
+    { update_id: 2, message: { chat: { id: 99, type: 'private', username: 'staff' }, text: 'private message' } },
+    { update_id: 3, message: { chat: { id: -1001, type: 'supergroup' }, caption: 'private caption' } }
+  ]);
+
+  assert.deepEqual(chats, [
+    { id: '99', type: 'private', username: 'staff' },
+    { id: '-1001', type: 'supergroup', username: null }
+  ]);
+  assert.equal(JSON.stringify(chats).includes(token), false);
+  assert.equal(JSON.stringify(chats).includes('private message'), false);
 });
