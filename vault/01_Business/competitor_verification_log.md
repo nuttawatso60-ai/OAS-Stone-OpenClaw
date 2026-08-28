@@ -23,4 +23,5 @@
 | ป้ายหินแกะสลัก เกษตรวิสัย | public business/search pages | ❌ ยังไม่พบ stable source ที่ยืนยัน exact identity เพียงพอ |
 | บ้านทำป้าย | new public-source search | ❌ ผลที่พบเป็นธุรกิจชื่อใกล้เคียงในนครราชสีมา ไม่ยืนยัน Roi Et |
 | ชินนะ แกะสลักป้ายหิน | [Facebook Page](https://www.facebook.com/p/%E0%B8%8A%E0%B8%B4%E0%B8%99%E0%B8%99%E0%B8%B0-%E0%B9%81%E0%B8%81%E0%B8%B0%E0%B8%AA%E0%B8%A5%E0%B8%B1%E0%B8%81%E0%B8%9B%E0%B9%89%E0%B8%B2%E0%B8%A2%E0%B8%AB%E0%B8%B4%E0%B8%99-100063441293177/) + exact-name public search | ⚠️ Page slug supports business identity/service lead; Facebook content inaccessible and no independent source confirms Roi Et, keep `pending_verification` |
+| บ้านทำป้าย | address-first public search: `บ้านทำป้ายแกะสลัก`, `119 บ้านสันติภาพ`, `ตำบลรอบเมือง` | ⚠️ Public location data confirms บ้านสันติภาพ in ต.รอบเมือง อ.เมืองร้อยเอ็ด, but no source ties the business name กับเลขที่ 119; keep `pending_verification` |
 | ร้านผ่องแกรนิต | new public-source search | ❌ ผลที่พบเป็น `ร้านผ่องใสแกรนิต` คนละชื่อและไม่ยืนยัน Roi Et |
