@@ -459,23 +459,97 @@ test('regex_anchored rejects patterns exceeding the backtracking budget', () => 
   }
 });
 
-test('regex_anchored documents conservative budget false positives', () => {
+test('regex_anchored relaxes only provably disjoint simple quantifiers', () => {
   const conversation = makeConversation([message(0, 'customer', 'x')]);
-  const safeLooking = [
+  const accepted = [
     '^[0-9]{0,10}-[0-9]{0,10}-[0-9]{0,10}$',
     '^[0-9]{0,20}[a-z]{0,20}[A-Z]{0,20}$',
-    '^a?b?c?d?e?f?g?h?i?j?$'
+    '^a?b?c?d?e?f?g?h?i?j?$',
+    '^[0-9]{0,30}[a-z]{0,30}[A-Z]{0,30}$',
+    '^[0-9]{0,100}-[0-9]{0,100}$',
+    '^a{0,100}b{1}a{0,100}$',
+    '^[a-z]{0,50}[A-Z]{0,50}$'
+  ];
+  const rejected = [
+    '^a{0,100}a{0,100}$',
+    '^a{0,100}a{0,100}a{0,100}$',
+    '^a{0,100}b?a{0,100}$',
+    '^a{0,100}b{0,1}a{0,100}$',
+    '^[0-9]{0,60}[a-z]?[0-9]{0,60}$',
+    '^[0-9]{0,50}\\d{0,50}$',
+    '^[a-z]{0,50}[a-c]{0,50}$',
+    '^(?:a{0,100})a{0,100}$'
   ];
 
-  // These quantifiers operate on disjoint atoms, but the current conservative
-  // budget intentionally rejects them until a separate ambiguity analysis is
-  // designed and reviewed. Naive adjacency-only analysis is unsafe: nullable
-  // closure can reconnect separated atoms, as in a{0,100}b?a{0,100}.
-  for (const pattern of safeLooking) {
+  for (const pattern of accepted) {
+    assert.doesNotThrow(
+      () => evaluateRule(makeRule('simple_safe', 'regex_anchored', { pattern }), conversation),
+      `expected simple disjoint pattern to pass: ${pattern}`
+    );
+  }
+  for (const pattern of rejected) {
     assert.throws(
-      () => evaluateRule(makeRule('budget_false_positive', 'regex_anchored', { pattern }), conversation),
+      () => evaluateRule(makeRule('simple_unsafe', 'regex_anchored', { pattern }), conversation),
+      /backtracking budget|group/,
+      `expected ambiguous or unsupported pattern to remain rejected: ${pattern}`
+    );
+  }
+
+  assert.throws(
+    () => evaluateRule(
+      makeRule('case_fold_overlap', 'regex_anchored', {
+        pattern: '^[a-z]{0,50}[A-Z]{0,50}$',
+        flags: 'i'
+      }),
+      conversation
+    ),
+    /backtracking budget/
+  );
+});
+
+test('regex_anchored relaxation remains bounded for adversarial simple patterns', () => {
+  const conversation = makeConversation([message(0, 'customer', 'x'.repeat(REGEX_MAX_TEXT_LENGTH))]);
+  const safeAscii = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+  const optionalAsciiAtoms = `^${safeAscii.map(character => `${character}?`).join('')}$`;
+  const disjointClasses = '^[0-9]{0,30}[A-Z]{0,30}[a-z]{0,30}[ -/]{0,30}[:@]{0,30}$';
+  const separatedRepeats = '^' + [
+    '[0-9]{0,20}A[a-z]{0,20}',
+    '[A-Z]{0,20}0[ -/]{0,20}',
+    '[a-z]{0,20}![:@]{0,20}'
+  ].join('') + '$';
+  const repeatedSetsWithSeparators = '^[0-9]{0,20}A[a-z]{0,20}B[0-9]{0,20}C[A-Z]{0,20}D[0-9]{0,20}$';
+  const mixedQuantifiers = '^[0-9]{0,40}A[a-z]?B[0-9]{1,40}C[A-Z]{0,40}$';
+  const nearPatternCap = '^' + 'x'.repeat(120) + safeAscii.map(character => `${character}?`).join('') + '$';
+
+  const patterns = [
+    optionalAsciiAtoms,
+    disjointClasses,
+    separatedRepeats,
+    repeatedSetsWithSeparators,
+    mixedQuantifiers,
+    nearPatternCap
+  ];
+
+  for (const pattern of patterns) {
+    assert.ok(pattern.length <= 256, `pattern must fit the length cap: ${pattern.length}`);
+    assert.doesNotThrow(
+      () => evaluateRule(makeRule('adversarial_simple', 'regex_anchored', { pattern }), conversation),
+      `expected bounded simple pattern to pass: ${pattern}`
+    );
+  }
+
+  const mustReject = [
+    `^${Array.from({ length: 70 }, () => 'a?').join('')}$`,
+    '^' + '[0-9]{0,20}'.repeat(10) + '$',
+    '^[0-9]{0,60}[a-z]?[0-9]{0,60}$',
+    '^[0-9]{0,50}\\d{0,50}$'
+  ];
+
+  for (const pattern of mustReject) {
+    assert.throws(
+      () => evaluateRule(makeRule('adversarial_ambiguous', 'regex_anchored', { pattern }), conversation),
       /backtracking budget/,
-      `expected current conservative rejection for ${pattern}`
+      `expected ambiguous simple pattern to remain rejected: ${pattern}`
     );
   }
 });
