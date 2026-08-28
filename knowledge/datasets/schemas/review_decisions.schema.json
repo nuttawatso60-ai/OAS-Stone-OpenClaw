@@ -1,0 +1,76 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "knowledge/datasets/schemas/review_decisions.schema.json",
+  "title": "Extraction Review Decisions",
+  "type": "object",
+  "required": ["schema_version", "run_id", "reviewed_by", "decisions"],
+  "properties": {
+    "schema_version": { "const": "1.0" },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[a-f0-9]{16}$"
+    },
+    "reviewed_by": {
+      "type": "string",
+      "minLength": 1
+    },
+    "decisions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["candidate_id", "decision"],
+        "properties": {
+          "candidate_id": {
+            "type": "string",
+            "pattern": "^cand_[a-f0-9]{24}$"
+          },
+          "decision": {
+            "enum": ["accept", "reject", "edit"]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "final_payload": { "$ref": "#/$defs/jsonObject" }
+        },
+        "additionalProperties": false,
+        "oneOf": [
+          {
+            "required": ["final_payload"],
+            "properties": {
+              "decision": { "const": "edit" },
+              "final_payload": {}
+            }
+          },
+          {
+            "properties": {
+              "decision": {
+                "enum": ["accept", "reject"]
+              },
+              "final_payload": false
+            }
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "jsonObject": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "jsonValue": {
+      "anyOf": [
+        { "type": "null" },
+        { "type": "boolean" },
+        { "type": "number" },
+        { "type": "string" },
+        {
+          "type": "array",
+          "items": { "$ref": "#/$defs/jsonValue" }
+        },
+        { "$ref": "#/$defs/jsonObject" }
+      ]
+    }
+  }
+}
