@@ -23,8 +23,10 @@
       "id": "chinna-kae-salak-pai-hin",
       "name": "ชินนะ แกะสลักป้ายหิน",
       "province": "Roi Et",
-      "verificationStatus": "pending_verification",
-      "sourceUrls": []
+      "verificationStatus": "verified",
+      "sourceUrls": [
+        "https://www.facebook.com/p/%E0%B8%8A%E0%B8%B4%E0%B8%99%E0%B8%99%E0%B8%B0-%E0%B9%81%E0%B8%81%E0%B8%B0%E0%B8%AA%E0%B8%A5%E0%B8%B1%E0%B8%81%E0%B8%9B%E0%B9%89%E0%B8%B2%E0%B8%A2%E0%B8%AB%E0%B8%B4%E0%B8%99-100063441293177/"
+      ]
     },
     {
       "id": "ran-fa-tak",
@@ -37,17 +39,21 @@
     },
     {
       "id": "ran-phong-granite",
-      "name": "ร้านผ่องแกรนิต",
+      "name": "ผ่องแกรนิต",
       "province": "Roi Et",
-      "verificationStatus": "pending_verification",
-      "sourceUrls": []
+      "verificationStatus": "verified",
+      "sourceUrls": [
+        "https://www.google.com/maps?cid=2460950551785954836"
+      ]
     },
     {
       "id": "pai-hin-kae-salak-kasetwisai",
-      "name": "ป้ายหินแกะสลัก เกษตรวิสัย",
+      "name": "ป้ายหินแกะสลัก",
       "province": "Roi Et",
-      "verificationStatus": "pending_verification",
-      "sourceUrls": []
+      "verificationStatus": "verified",
+      "sourceUrls": [
+        "https://www.google.com/maps?cid=2490086547384723077"
+      ]
     }
   ]
 }

@@ -103,7 +103,13 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
     assert.equal(competitorsById.get(id).province, 'Roi Et');
   }
 
-  for (const id of ['phlanchai-pai-hin', 'ran-fa-tak']) {
+  for (const id of [
+    'phlanchai-pai-hin',
+    'ran-fa-tak',
+    'chinna-kae-salak-pai-hin',
+    'ran-phong-granite',
+    'pai-hin-kae-salak-kasetwisai'
+  ]) {
     assert.equal(competitorsById.get(id).verificationStatus, 'verified');
     assert.ok(competitorsById.get(id).sourceUrls.length > 0);
   }
@@ -112,18 +118,25 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   assert.deepEqual(competitorsById.get('baan-tham-pai').sourceUrls, [
     'https://www.google.com/maps?cid=15093723125795807870'
   ]);
+  assert.equal(competitorsById.get('chinna-kae-salak-pai-hin').name, 'ชินนะ แกะสลักป้ายหิน');
+  assert.deepEqual(competitorsById.get('chinna-kae-salak-pai-hin').sourceUrls, [
+    'https://www.facebook.com/p/%E0%B8%8A%E0%B8%B4%E0%B8%99%E0%B8%99%E0%B8%B0-%E0%B9%81%E0%B8%81%E0%B8%B0%E0%B8%AA%E0%B8%A5%E0%B8%B1%E0%B8%81%E0%B8%9B%E0%B9%89%E0%B8%B2%E0%B8%A2%E0%B8%AB%E0%B8%B4%E0%B8%99-100063441293177/'
+  ]);
+  assert.equal(competitorsById.get('pai-hin-kae-salak-kasetwisai').name, 'ป้ายหินแกะสลัก');
+  assert.deepEqual(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls, [
+    'https://www.google.com/maps?cid=2490086547384723077'
+  ]);
+  assert.equal(competitorsById.get('ran-phong-granite').name, 'ผ่องแกรนิต');
+  assert.deepEqual(competitorsById.get('ran-phong-granite').sourceUrls, [
+    'https://www.google.com/maps?cid=2460950551785954836'
+  ]);
   for (const sourceUrl of competitorsById.get('phlanchai-pai-hin').sourceUrls
     .concat(competitorsById.get('ran-fa-tak').sourceUrls)
-    .concat(competitorsById.get('baan-tham-pai').sourceUrls)) {
+    .concat(competitorsById.get('baan-tham-pai').sourceUrls)
+    .concat(competitorsById.get('chinna-kae-salak-pai-hin').sourceUrls)
+    .concat(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls)
+    .concat(competitorsById.get('ran-phong-granite').sourceUrls)) {
     assert.ok(['http:', 'https:'].includes(new URL(sourceUrl).protocol));
-  }
-
-  for (const id of [
-    'chinna-kae-salak-pai-hin',
-    'ran-phong-granite',
-    'pai-hin-kae-salak-kasetwisai'
-  ]) {
-    assert.equal(competitorsById.get(id).verificationStatus, 'pending_verification');
   }
 
   const observations = loadObservations();
@@ -137,6 +150,21 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   assert.match(baanThamPaiObservation.summary, /ร้านบ้านทำป้ายแกะสลัก/);
   assert.match(baanThamPaiObservation.summary, /บ้านสันติภาพ 119 ตำบล รอบเมือง อำเภอเมืองร้อยเอ็ด 45000/);
   assert.equal(baanThamPaiObservation.sourceUrl, 'https://www.google.com/maps?cid=15093723125795807870');
+  const chinnaObservation = observations.find(observation => observation.competitorId === 'chinna-kae-salak-pai-hin');
+  assert.ok(chinnaObservation);
+  assert.match(chinnaObservation.summary, /ชินนะ แกะสลักป้ายหิน/);
+  assert.match(chinnaObservation.summary, /Roi Et, Thailand, 45170/);
+  assert.equal(chinnaObservation.sourceUrl, competitorsById.get('chinna-kae-salak-pai-hin').sourceUrls[0]);
+  const kasetWisaiObservation = observations.find(observation => observation.competitorId === 'pai-hin-kae-salak-kasetwisai');
+  assert.ok(kasetWisaiObservation);
+  assert.match(kasetWisaiObservation.summary, /ป้ายหินแกะสลัก/);
+  assert.match(kasetWisaiObservation.summary, /MH4P\+GRV ตำบล เกษตรวิสัย อำเภอ เกษตรวิสัย ร้อยเอ็ด 45150/);
+  assert.equal(kasetWisaiObservation.sourceUrl, competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls[0]);
+  const phongGraniteObservation = observations.find(observation => observation.competitorId === 'ran-phong-granite');
+  assert.ok(phongGraniteObservation);
+  assert.match(phongGraniteObservation.summary, /ผ่องแกรนิต/);
+  assert.match(phongGraniteObservation.summary, /232 ตำบล ในเมือง อำเภอเมืองร้อยเอ็ด ร้อยเอ็ด 45000/);
+  assert.equal(phongGraniteObservation.sourceUrl, competitorsById.get('ran-phong-granite').sourceUrls[0]);
   assert.ok(observations.some(observation => observation.competitorId === 'phlanchai-pai-hin'));
   assert.ok(observations.some(observation => observation.competitorId === 'ran-fa-tak'));
 });

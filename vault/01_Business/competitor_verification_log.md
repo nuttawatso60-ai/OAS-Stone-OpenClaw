@@ -49,3 +49,11 @@
 | คู่แข่ง | source type ใหม่ | ผล |
 |---|---|---|
 | บ้านทำป้าย | Google Maps CID `15093723125795807870` from place identifier `0x3117fd92c38130e7:0xd177ad368328627e` | ✅ resolved stable place URL `https://www.google.com/maps?cid=15093723125795807870`; public business profile shows `ร้านบ้านทำป้ายแกะสลัก`, `บ้านสันติภาพ 119 ตำบล รอบเมือง อำเภอเมืองร้อยเอ็ด 45000`; upgraded `baan-tham-pai` |
+
+## 2026-08-28 — public-source verification round 5
+
+| คู่แข่ง | source type ใหม่ | ผล |
+| ------- | ---------------- | -- |
+| ชินนะ แกะสลักป้ายหิน | supplied Facebook Page URL/Page ID `100063441293177` public About/location data | ✅ public page shows `ชินนะ แกะสลักป้ายหิน` and `Roi Et, Thailand, 45170`; upgraded `chinna-kae-salak-pai-hin` |
+| ป้ายหินแกะสลัก เกษตรวิสัย | Google Maps direct Place ID/CID resolution from `ChIJqwW3GwCLFzERhWbYlIWQjiI` to CID `2490086547384723077` | ✅ stable place URL `https://www.google.com/maps?cid=2490086547384723077` shows `ป้ายหินแกะสลัก`, `MH4P+GRV ตำบล เกษตรวิสัย อำเภอ เกษตรวิสัย ร้อยเอ็ด 45150`; upgraded `pai-hin-kae-salak-kasetwisai` |
+| ร้านผ่องแกรนิต | exact Google Maps search for `ร้านผ่องแกรนิต ร้อยเอ็ด` resolved business profile CID `2460950551785954836`; exact web search also surfaced only false positive `ผ่องใสแกรนิต` Nonthaburi | ✅ Maps profile shows source-backed name `ผ่องแกรนิต`, `232 ตำบล ในเมือง อำเภอเมืองร้อยเอ็ด ร้อยเอ็ด 45000`; upgraded `ran-phong-granite`; rejected `ผ่องใสแกรนิต` as non-exact/Nonthaburi |
