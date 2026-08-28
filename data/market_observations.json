@@ -8,22 +8,10 @@
       "observedAt": "2026-08-28T10:41:04Z"
     },
     {
-      "competitorId": "chinna-kae-salak-pai-hin",
-      "summary": "Facebook Page ระบุชื่อ ชินนะ แกะสลักป้ายหิน และ location เป็น Roi Et, Thailand, 45170",
-      "sourceUrl": "https://www.facebook.com/p/%E0%B8%8A%E0%B8%B4%E0%B8%99%E0%B8%99%E0%B8%B0-%E0%B9%81%E0%B8%81%E0%B8%B0%E0%B8%AA%E0%B8%A5%E0%B8%B1%E0%B8%81%E0%B8%9B%E0%B9%89%E0%B8%B2%E0%B8%A2%E0%B8%AB%E0%B8%B4%E0%B8%99-100063441293177/",
-      "observedAt": "2026-08-28T11:10:41Z"
-    },
-    {
       "competitorId": "pai-hin-kae-salak-kasetwisai",
-      "summary": "Google Maps business profile ระบุชื่อ ป้ายหินแกะสลัก ที่ MH4P+GRV ตำบล เกษตรวิสัย อำเภอ เกษตรวิสัย ร้อยเอ็ด 45150",
-      "sourceUrl": "https://www.google.com/maps?cid=2490086547384723077",
-      "observedAt": "2026-08-28T11:10:41Z"
-    },
-    {
-      "competitorId": "ran-phong-granite",
-      "summary": "Google Maps business profile ระบุชื่อ ผ่องแกรนิต ที่ 232 ตำบล ในเมือง อำเภอเมืองร้อยเอ็ด ร้อยเอ็ด 45000",
-      "sourceUrl": "https://www.google.com/maps?cid=2460950551785954836",
-      "observedAt": "2026-08-28T11:10:41Z"
+      "summary": "Google Maps Place ID URL ระบุชื่อ ป้ายหินแกะสลัก ที่ MH4P+GRV ตำบล เกษตรวิสัย อำเภอ เกษตรวิสัย ร้อยเอ็ด 45150",
+      "sourceUrl": "https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI",
+      "observedAt": "2026-08-28T11:20:52Z"
     },
     {
       "competitorId": "phlanchai-pai-hin",

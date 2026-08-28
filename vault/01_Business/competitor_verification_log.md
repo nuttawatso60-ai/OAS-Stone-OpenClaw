@@ -57,3 +57,11 @@
 | ชินนะ แกะสลักป้ายหิน | supplied Facebook Page URL/Page ID `100063441293177` public About/location data | ✅ public page shows `ชินนะ แกะสลักป้ายหิน` and `Roi Et, Thailand, 45170`; upgraded `chinna-kae-salak-pai-hin` |
 | ป้ายหินแกะสลัก เกษตรวิสัย | Google Maps direct Place ID/CID resolution from `ChIJqwW3GwCLFzERhWbYlIWQjiI` to CID `2490086547384723077` | ✅ stable place URL `https://www.google.com/maps?cid=2490086547384723077` shows `ป้ายหินแกะสลัก`, `MH4P+GRV ตำบล เกษตรวิสัย อำเภอ เกษตรวิสัย ร้อยเอ็ด 45150`; upgraded `pai-hin-kae-salak-kasetwisai` |
 | ร้านผ่องแกรนิต | exact Google Maps search for `ร้านผ่องแกรนิต ร้อยเอ็ด` resolved business profile CID `2460950551785954836`; exact web search also surfaced only false positive `ผ่องใสแกรนิต` Nonthaburi | ✅ Maps profile shows source-backed name `ผ่องแกรนิต`, `232 ตำบล ในเมือง อำเภอเมืองร้อยเอ็ด ร้อยเอ็ด 45000`; upgraded `ran-phong-granite`; rejected `ผ่องใสแกรนิต` as non-exact/Nonthaburi |
+
+## 2026-08-28 — reproducible-source review fix
+
+| คู่แข่ง | source type ใหม่ | ผล |
+| ------- | ---------------- | -- |
+| ป้ายหินแกะสลัก เกษตรวิสัย | public Google Maps `query_place_id` URL for `ChIJqwW3GwCLFzERhWbYlIWQjiI`; public HTML exposes the Place ID but not CID `2490086547384723077` | kept verified with `https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI`; removed inferred CID as source evidence |
+| ชินนะ แกะสลักป้ายหิน | indexed search for Page ID/name/location and public Facebook URL re-check | exact `Roi Et, Thailand, 45170` location was visible only in authenticated/local Facebook view and not reproduced by indexed/public source; reverted `chinna-kae-salak-pai-hin` to `pending_verification` |
+| ร้านผ่องแกรนิต | public Maps CID/HTML check and exact web search; `ผ่องใสแกรนิต` appeared as false positive | CID `2460950551785954836` did not expose exact public metadata outside local Maps view; reverted `ran-phong-granite` to `pending_verification` and restored display name `ร้านผ่องแกรนิต` |
