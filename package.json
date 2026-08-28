@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "node server.js",
+    "telegram": "node telegram_bot.js",
     "price": "node tools/pricing_engine.js calculate data/sample_jobs.json",
     "price:file": "node tools/pricing_engine.js calculate",
     "price:python": "python pricing_engine.py",
