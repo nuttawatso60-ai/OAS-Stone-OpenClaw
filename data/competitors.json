@@ -3,10 +3,12 @@
   "competitors": [
     {
       "id": "baan-tham-pai",
-      "name": "บ้านทำป้าย",
+      "name": "ร้านบ้านทำป้ายแกะสลัก",
       "province": "Roi Et",
-      "verificationStatus": "pending_verification",
-      "sourceUrls": []
+      "verificationStatus": "verified",
+      "sourceUrls": [
+        "https://www.google.com/maps?cid=15093723125795807870"
+      ]
     },
     {
       "id": "phlanchai-pai-hin",

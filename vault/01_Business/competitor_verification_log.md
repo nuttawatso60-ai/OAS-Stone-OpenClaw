@@ -43,3 +43,9 @@
 | คู่แข่ง | source type ใหม่ | ผล |
 |---|---|---|
 | บ้านทำป้าย | place-ID/directions resolution `0x3117fd92c38130e7:0xd177ad368328627e` + exact destination search | ไม่พบ stable public business/place URL ที่ resolve ได้; destination text เป็น lead แต่ยังไม่พอ verify `baan-tham-pai`; keep `pending_verification` |
+
+## 2026-08-28 — Google Maps place resolution round 4 follow-up
+
+| คู่แข่ง | source type ใหม่ | ผล |
+|---|---|---|
+| บ้านทำป้าย | Google Maps CID `15093723125795807870` from place identifier `0x3117fd92c38130e7:0xd177ad368328627e` | ✅ resolved stable place URL `https://www.google.com/maps?cid=15093723125795807870`; public business profile shows `ร้านบ้านทำป้ายแกะสลัก`, `บ้านสันติภาพ 119 ตำบล รอบเมือง อำเภอเมืองร้อยเอ็ด 45000`; upgraded `baan-tham-pai` |

@@ -107,13 +107,18 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
     assert.equal(competitorsById.get(id).verificationStatus, 'verified');
     assert.ok(competitorsById.get(id).sourceUrls.length > 0);
   }
+  assert.equal(competitorsById.get('baan-tham-pai').name, 'ร้านบ้านทำป้ายแกะสลัก');
+  assert.equal(competitorsById.get('baan-tham-pai').verificationStatus, 'verified');
+  assert.deepEqual(competitorsById.get('baan-tham-pai').sourceUrls, [
+    'https://www.google.com/maps?cid=15093723125795807870'
+  ]);
   for (const sourceUrl of competitorsById.get('phlanchai-pai-hin').sourceUrls
-    .concat(competitorsById.get('ran-fa-tak').sourceUrls)) {
+    .concat(competitorsById.get('ran-fa-tak').sourceUrls)
+    .concat(competitorsById.get('baan-tham-pai').sourceUrls)) {
     assert.ok(['http:', 'https:'].includes(new URL(sourceUrl).protocol));
   }
 
   for (const id of [
-    'baan-tham-pai',
     'chinna-kae-salak-pai-hin',
     'ran-phong-granite',
     'pai-hin-kae-salak-kasetwisai'
@@ -127,6 +132,11 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
     assert.ok(competitor, `observation references unknown competitor: ${observation.competitorId}`);
     assert.equal(competitor.verificationStatus, 'verified');
   }
+  const baanThamPaiObservation = observations.find(observation => observation.competitorId === 'baan-tham-pai');
+  assert.ok(baanThamPaiObservation);
+  assert.match(baanThamPaiObservation.summary, /ร้านบ้านทำป้ายแกะสลัก/);
+  assert.match(baanThamPaiObservation.summary, /บ้านสันติภาพ 119 ตำบล รอบเมือง อำเภอเมืองร้อยเอ็ด 45000/);
+  assert.equal(baanThamPaiObservation.sourceUrl, 'https://www.google.com/maps?cid=15093723125795807870');
   assert.ok(observations.some(observation => observation.competitorId === 'phlanchai-pai-hin'));
   assert.ok(observations.some(observation => observation.competitorId === 'ran-fa-tak'));
 });
