@@ -2,10 +2,18 @@ const express = require('express');
 const path = require('path');
 const fs = require('fs');
 const { calculateJobPrice } = require('./tools/pricing_engine');
+const {
+  createJobStore,
+  InvalidTransitionError,
+  JobNotFoundError,
+  PersistenceError,
+  UnknownStatusError,
+  ValidationError
+} = require('./tools/job_store');
 
-const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 const RULES_PATH = path.join(__dirname, 'data', 'pricing_rules.json');
+const DB_PATH = path.join(__dirname, 'data', 'jobs.db');
 
 function loadRules() {
   return JSON.parse(fs.readFileSync(RULES_PATH, 'utf8'));
@@ -23,45 +31,145 @@ function requiredText(value, field) {
   return value.trim();
 }
 
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+function buildJobRequest(body) {
+  const customer = {
+    name: requiredText(body.customerName, 'customerName'),
+    phone: requiredText(body.phone, 'phone')
+  };
+  const jobType = requiredText(body.jobType, 'jobType');
+  const notes = typeof body.notes === 'string' ? body.notes.trim() : '';
+  const job = {
+    id: quoteNumber(),
+    description: `${jobType}${notes ? ` — ${notes}` : ''}`,
+    material: body.material,
+    width_cm: body.widthCm,
+    height_cm: body.heightCm,
+    quantity: body.quantity,
+    complexity: body.complexity,
+    rush: Boolean(body.rush),
+    depth_mm: 3,
+    paint: false,
+    install: false
+  };
+  return {
+    customer,
+    job,
+    jobType,
+    notes
+  };
+}
 
-app.post('/api/quotes/preview', (req, res) => {
-  try {
-    const customer = {
-      name: requiredText(req.body.customerName, 'customerName'),
-      phone: requiredText(req.body.phone, 'phone')
-    };
-    const jobType = requiredText(req.body.jobType, 'jobType');
-    const notes = typeof req.body.notes === 'string' ? req.body.notes.trim() : '';
-    const job = {
-      id: quoteNumber(),
-      description: `${jobType}${notes ? ` — ${notes}` : ''}`,
-      material: req.body.material,
-      width_cm: req.body.widthCm,
-      height_cm: req.body.heightCm,
-      quantity: req.body.quantity,
-      complexity: req.body.complexity,
-      rush: Boolean(req.body.rush),
-      depth_mm: 3,
-      paint: false,
-      install: false
-    };
-    const result = calculateJobPrice(job, loadRules());
-
-    res.json({
-      shopName: 'อ.เอ.เอส แกะสลัก',
-      quoteNumber: job.id,
-      createdAt: new Date().toLocaleString('th-TH'),
-      customer,
-      job: { ...job, jobType, notes },
-      result,
-      currency: 'THB'
-    });
-  } catch (error) {
-    res.status(400).json({ error: error.message });
+function jobErrorResponse(error, res) {
+  if (error instanceof ValidationError || error instanceof UnknownStatusError) {
+    return res.status(400).json({ error: error.message });
   }
-});
+  if (error instanceof JobNotFoundError) {
+    return res.status(404).json({ error: error.message });
+  }
+  if (error instanceof InvalidTransitionError) {
+    return res.status(409).json({ error: error.message });
+  }
+  if (error instanceof PersistenceError) {
+    return res.status(503).json({ error: 'Job persistence unavailable' });
+  }
+  return res.status(400).json({ error: error.message });
+}
+
+function createApp({ jobStore } = {}) {
+  const app = express();
+  let runtimeJobStore = jobStore;
+  const getJobStore = () => {
+    runtimeJobStore ??= createJobStore({ dbPath: DB_PATH });
+    return runtimeJobStore;
+  };
+
+  app.use(express.json());
+  app.use(express.static(path.join(__dirname, 'public')));
+
+  app.post('/api/quotes/preview', (req, res) => {
+    try {
+      const { customer, job, jobType, notes } = buildJobRequest(req.body);
+      const result = calculateJobPrice(job, loadRules());
+
+      res.json({
+        shopName: 'อ.เอ.เอส แกะสลัก',
+        quoteNumber: job.id,
+        createdAt: new Date().toLocaleString('th-TH'),
+        customer,
+        job: { ...job, jobType, notes },
+        result,
+        currency: 'THB'
+      });
+    } catch (error) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.post('/api/jobs', (req, res) => {
+    try {
+      const { customer, job, jobType, notes } = buildJobRequest(req.body);
+      const result = calculateJobPrice(job, loadRules());
+      const persisted = getJobStore().createJob({
+        customer,
+        job: {
+          jobType,
+          notes,
+          material: job.material,
+          widthCm: job.width_cm,
+          heightCm: job.height_cm,
+          depthMm: job.depth_mm,
+          quantity: result.quantity,
+          complexity: job.complexity || 'standard',
+          rush: job.rush,
+          paint: job.paint,
+          install: job.install
+        },
+        result,
+        quoteNumber: job.id
+      });
+      return res.status(201).json(persisted);
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
+  app.get('/api/jobs', (req, res) => {
+    try {
+      const status = req.query.status;
+      return res.json(getJobStore().listJobs(status === undefined ? {} : { status }));
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
+  app.get('/api/jobs/:jobId', (req, res) => {
+    try {
+      return res.json(getJobStore().getJob(req.params.jobId));
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
+  app.patch('/api/jobs/:jobId/status', (req, res) => {
+    try {
+      return res.json(getJobStore().updateStatus(req.params.jobId, req.body.status));
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
+  app.use((error, req, res, next) => {
+    if (error instanceof SyntaxError && Object.hasOwn(error, 'body')) {
+      return res.status(400).json({ error: 'Invalid JSON request body' });
+    }
+
+    return next(error);
+  });
+
+  return app;
+}
+
+const app = createApp();
 
 if (require.main === module) {
   app.listen(PORT, () => {
@@ -69,12 +177,4 @@ if (require.main === module) {
   });
 }
 
-app.use((error, req, res, next) => {
-  if (error instanceof SyntaxError && Object.hasOwn(error, 'body')) {
-    return res.status(400).json({ error: 'Invalid JSON request body' });
-  }
-
-  return next(error);
-});
-
-module.exports = { app };
+module.exports = { app, createApp };
