@@ -1,3 +1,5 @@
+const { StaffPricingInputError, quoteStaffPrice } = require('./staff_pricing');
+
 class TelegramConfigError extends Error {
   constructor(message) {
     super(message);
@@ -86,14 +88,24 @@ function staffReply(text) {
     return [
       'OAS Stone Staff Assistant',
       'เครื่องมือภายในสำหรับเจ้าของร้านและพนักงาน',
-      'ตอนนี้รองรับคำสั่งพื้นฐานเท่านั้น และยังไม่เปิดเผยข้อมูลราคาเชิงลึก',
-      'คำสั่งถัดไปที่จะเพิ่ม: /price /materials /sizes /train /market'
+      'คำสั่งที่ใช้ได้:',
+      '/price <วัสดุ> <กว้างxสูง> [จำนวน]',
+      'ตัวอย่าง: /price granite 30x20 2',
+      'วัสดุ: granite, marble, acrylic, sandstone'
     ].join('\n');
+  }
+
+  if (normalized === '/price' || normalized.startsWith('/price ')) {
+    try {
+      return quoteStaffPrice(normalized);
+    } catch (error) {
+      if (error instanceof StaffPricingInputError) return error.message;
+      return 'ไม่สามารถคำนวณราคาได้';
+    }
   }
 
   return [
     'รับข้อความแล้ว',
-    'บอทนี้ใช้ภายในร้านสำหรับราคา ขนาด วัสดุ การฝึกพนักงาน และข้อมูลตลาด',
     'ใช้ /help เพื่อดูคำสั่งที่รองรับ'
   ].join('\n');
 }
