@@ -1,0 +1,37 @@
+{
+  "version": 1,
+  "sizes": {
+    "configured": false,
+    "guidance": "ยังไม่ได้กำหนด standard sizes ของร้าน โปรดเก็บขนาดจริงจากผู้ขอประเมิน",
+    "items": []
+  },
+  "training": {
+    "title": "ข้อมูลที่ต้องเก็บก่อนประเมินราคา",
+    "steps": [
+      "วัสดุและชื่อเรียกที่ลูกค้าหรือพนักงานระบุ",
+      "ความกว้างและความสูงเป็นเซนติเมตร",
+      "จำนวนชิ้น",
+      "ความลึกหรือความหนาที่เกี่ยวข้องกับงาน",
+      "ความซับซ้อนของลายหรือข้อความ",
+      "งานเร่ง สี และการติดตั้ง เมื่อเกี่ยวข้อง"
+    ],
+    "note": "คำสั่ง /price ใช้ depth 3 mm, complexity standard, no rush, no paint และ no installation เป็นค่าเริ่มต้น"
+  },
+  "quiz": [
+    {
+      "id": "price-basics",
+      "question": "ก่อนใช้ /price ต้องเก็บข้อมูลพื้นฐานอะไรบ้าง",
+      "answer": "วัสดุ, ความกว้าง, ความสูง และจำนวน"
+    },
+    {
+      "id": "price-defaults",
+      "question": "ถ้าไม่ได้ระบุจำนวนใน /price ระบบใช้จำนวนเท่าใด",
+      "answer": "จำนวน 1"
+    },
+    {
+      "id": "price-assumptions",
+      "question": "ค่าเริ่มต้นของ /price ที่ต้องแจ้งให้ทีมทราบมีอะไรบ้าง",
+      "answer": "depth 3 mm, complexity standard, no rush, no paint และ no installation"
+    }
+  ]
+}

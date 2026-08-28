@@ -171,6 +171,26 @@ test('staff reply never renders Infinity for oversized quantities', () => {
   assert.match(reply, /จำนวนต้องเป็นเลขจำนวนเต็มบวก/);
 });
 
+test('staff knowledge commands return deterministic internal content', () => {
+  const materials = staffReply('/materials');
+  assert.match(materials, /granite/);
+  assert.match(materials, /แกรนิต/);
+  assert.doesNotMatch(materials, /base_per_cm2|cnc_rate_per_minute/);
+  assert.match(staffReply('/sizes'), /ยังไม่ได้กำหนด standard sizes/);
+  assert.match(staffReply('/train'), /วัสดุ/);
+  assert.match(staffReply('/quiz'), /คำถาม 1:/);
+  assert.doesNotMatch(staffReply('/quiz'), /base_per_cm2|cnc_rate_per_minute/);
+});
+
+test('staff knowledge commands support Telegram group suffixes', () => {
+  for (const command of ['/materials', '/sizes', '/train', '/quiz']) {
+    assert.equal(
+      staffReply(`${command}@oas_stone_shop_bot`),
+      staffReply(command)
+    );
+  }
+});
+
 test('unknown commands fall through without echoing the input back', () => {
   const secret = 'staff-only-8985228277';
   for (const text of [`/unknown ${secret}`, secret, '/pricey granite 30x20']) {
