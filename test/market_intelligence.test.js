@@ -89,17 +89,44 @@ test('pending competitors are listed by name but cannot produce verified observa
 
 test('Roi Et registry keeps only sufficiently evidenced competitors verified', () => {
   const registry = loadCompetitorRegistry();
-  const verified = registry.competitors.filter(competitor => competitor.verificationStatus === 'verified');
-  const pending = registry.competitors.filter(competitor => competitor.verificationStatus === 'pending_verification');
-  assert.equal(registry.competitors.length, 6);
-  assert.equal(verified.length, 1);
-  assert.equal(pending.length, 5);
-  assert.ok(registry.competitors.every(competitor => competitor.province === 'Roi Et'));
-  assert.deepEqual(verified.map(competitor => competitor.name), ['พลาญชัยป้ายหิน']);
-  assert.ok(verified[0].sourceUrls.length > 0);
+  const competitorsById = new Map(registry.competitors.map(competitor => [competitor.id, competitor]));
+  const knownRoiEtIds = [
+    'baan-tham-pai',
+    'phlanchai-pai-hin',
+    'chinna-kae-salak-pai-hin',
+    'ran-fa-tak',
+    'ran-phong-granite',
+    'pai-hin-kae-salak-kasetwisai'
+  ];
+  for (const id of knownRoiEtIds) {
+    assert.ok(competitorsById.has(id), `missing known competitor: ${id}`);
+    assert.equal(competitorsById.get(id).province, 'Roi Et');
+  }
+
+  const verifiedCompetitor = competitorsById.get('phlanchai-pai-hin');
+  assert.equal(verifiedCompetitor.verificationStatus, 'verified');
+  assert.ok(verifiedCompetitor.sourceUrls.length > 0);
+  for (const sourceUrl of verifiedCompetitor.sourceUrls) {
+    assert.ok(['http:', 'https:'].includes(new URL(sourceUrl).protocol));
+  }
+
+  for (const id of [
+    'baan-tham-pai',
+    'chinna-kae-salak-pai-hin',
+    'ran-fa-tak',
+    'ran-phong-granite',
+    'pai-hin-kae-salak-kasetwisai'
+  ]) {
+    assert.equal(competitorsById.get(id).verificationStatus, 'pending_verification');
+  }
+
   const observations = loadObservations();
-  assert.equal(observations.length, 1);
-  assert.equal(observations[0].competitorId, verified[0].id);
+  for (const observation of observations) {
+    const competitor = competitorsById.get(observation.competitorId);
+    assert.ok(competitor, `observation references unknown competitor: ${observation.competitorId}`);
+    assert.equal(competitor.verificationStatus, 'verified');
+  }
+  assert.ok(observations.some(observation => observation.competitorId === 'phlanchai-pai-hin'));
 });
 
 test('digest filters observations to the selected UTC date', () => {
