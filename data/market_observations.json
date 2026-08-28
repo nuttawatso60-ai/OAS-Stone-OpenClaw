@@ -2,6 +2,12 @@
   "version": 1,
   "observations": [
     {
+      "competitorId": "baan-tham-pai",
+      "summary": "Google Maps business profile ระบุชื่อ ร้านบ้านทำป้ายแกะสลัก ที่บ้านสันติภาพ 119 ตำบล รอบเมือง อำเภอเมืองร้อยเอ็ด 45000",
+      "sourceUrl": "https://www.google.com/maps?cid=15093723125795807870",
+      "observedAt": "2026-08-28T10:41:04Z"
+    },
+    {
       "competitorId": "phlanchai-pai-hin",
       "summary": "เอกสารจัดซื้อจัดจ้างของการไฟฟ้าส่วนภูมิภาคจังหวัดร้อยเอ็ดระบุชื่อ พลาญชัยป้ายหิน ในรายการค่าทำป้ายหินอ่อน",
       "sourceUrl": "https://www.oic.go.th/FILEWEB/CABINFOCENTER11/DRAWER038/GENERAL/DATA0002/00002266.PDF",

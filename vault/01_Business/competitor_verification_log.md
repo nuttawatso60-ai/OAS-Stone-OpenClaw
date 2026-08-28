@@ -32,8 +32,20 @@
 
 | คู่แข่ง | source type ใหม่ | ผล |
 |---|---|---|
-| ป้ายหินแกะสลัก เกษตรวิสัย | exact-name, `MH4P+GRV`, Google/Maps-style, directory and local-government search | ⚠️ พบ location/business lead แต่ผลใหม่เป็นข้อมูลทั่วไป/ธุรกิจอื่น; ไม่พบ stable public URL ที่ผูก exact identity กับเกษตรวิสัย/ร้อยเอ็ด; keep `pending_verification` |
-| ชินนะ แกะสลักป้ายหิน | exact-name, Page ID, Google/Maps-style, local procurement and public business search | ❌ ไม่พบ source ใหม่ที่ยืนยัน exact identity + Roi Et; keep `pending_verification` |
-| ร้านผ่องแกรนิต | exact-name, Roi Et, Google/Maps-style, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; keep `pending_verification` |
+| ป้ายหินแกะสลัก เกษตรวิสัย | exact Place ID `ChIJqwW3GwCLFzERhWbYlIWQjiI`, `MH4P+GRV`, Google/Maps-style, directory and local-government search | ⚠️ ไม่พบ stable public place URL หรือผลที่ผูก exact identity กับเกษตรวิสัย/ร้อยเอ็ด; ผล postcode/general หรือธุรกิจอื่นไม่พอ; keep `pending_verification` |
+| ชินนะ แกะสลักป้ายหิน | exact-name, Page ID, Google/Maps-style, local procurement and public business search | ❌ ไม่พบ source ใหม่ที่ยืนยัน exact identity + Roi Et; ผลที่พบเป็นธุรกิจ/บริการอื่น; keep `pending_verification` |
+| ร้านผ่องแกรนิต | exact-name, Roi Et, Google/Maps-style, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; ผลที่พบไม่ใช่ชื่อ exact; keep `pending_verification` |
 | บ้านทำป้าย | exact coordinates `16.0356508,103.6562492`, Google/Maps-style and address-linked search | Google Street View lead at 16.0356508,103.6562492 is geographically consistent with Rop Mueang, Roi Et; business identity still requires independent public linkage. |
 | บ้านทำป้าย — Kalasin lead | Google Maps/Street View, `16.4267193,103.5183828` | location confirmed as ต.เหนือ อ.เมืองกาฬสินธุ์ จ.กาฬสินธุ์; business-name/brand linkage still requires public verification |
+
+## 2026-08-28 — Google Maps place resolution round 4
+
+| คู่แข่ง | source type ใหม่ | ผล |
+|---|---|---|
+| บ้านทำป้าย | place-ID/directions resolution `0x3117fd92c38130e7:0xd177ad368328627e` + exact destination search | ไม่พบ stable public business/place URL ที่ resolve ได้; destination text เป็น lead แต่ยังไม่พอ verify `baan-tham-pai`; keep `pending_verification` |
+
+## 2026-08-28 — Google Maps place resolution round 4 follow-up
+
+| คู่แข่ง | source type ใหม่ | ผล |
+|---|---|---|
+| บ้านทำป้าย | Google Maps CID `15093723125795807870` from place identifier `0x3117fd92c38130e7:0xd177ad368328627e` | ✅ resolved stable place URL `https://www.google.com/maps?cid=15093723125795807870`; public business profile shows `ร้านบ้านทำป้ายแกะสลัก`, `บ้านสันติภาพ 119 ตำบล รอบเมือง อำเภอเมืองร้อยเอ็ด 45000`; upgraded `baan-tham-pai` |
