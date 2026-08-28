@@ -37,3 +37,9 @@
 | ร้านผ่องแกรนิต | exact-name, Roi Et, Google/Maps-style, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; keep `pending_verification` |
 | บ้านทำป้าย | exact coordinates `16.0356508,103.6562492`, Google/Maps-style and address-linked search | Google Street View lead at 16.0356508,103.6562492 is geographically consistent with Rop Mueang, Roi Et; business identity still requires independent public linkage. |
 | บ้านทำป้าย — Kalasin lead | Google Maps/Street View, `16.4267193,103.5183828` | location confirmed as ต.เหนือ อ.เมืองกาฬสินธุ์ จ.กาฬสินธุ์; business-name/brand linkage still requires public verification |
+
+## 2026-08-28 — Google Maps place resolution round 4
+
+| คู่แข่ง | source type ใหม่ | ผล |
+|---|---|---|
+| บ้านทำป้าย | place-ID/directions resolution `0x3117fd92c38130e7:0xd177ad368328627e` + exact destination search | ไม่พบ stable public business/place URL ที่ resolve ได้; destination text เป็น lead แต่ยังไม่พอ verify `baan-tham-pai`; keep `pending_verification` |
