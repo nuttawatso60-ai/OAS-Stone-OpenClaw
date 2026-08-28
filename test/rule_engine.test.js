@@ -681,6 +681,29 @@ test('numeric_pattern rejects signed and embedded numeric fragments', () => {
   );
 });
 
+test('numeric_pattern matches NFC-equivalent units like other rule kinds', () => {
+  const rule = makeRule('nfc_numeric_unit', 'numeric_pattern', {
+    number_pattern: 'integer',
+    units: ['mètre']
+  });
+  const sourceText = '100 me\u0300tre';
+
+  assert.deepEqual(
+    evaluateRule(rule, makeConversation([message(0, 'agent', sourceText)])),
+    [{
+      message_indexes: [0],
+      captures: { literal: '100 mètre', number: '100', unit: 'mètre' }
+    }]
+  );
+  assert.deepEqual(
+    evaluateRule(
+      makeRule('nfc_exact_unit', 'exact_phrase', { phrase: 'mètre' }),
+      makeConversation([message(0, 'agent', sourceText)])
+    ),
+    [{ message_indexes: [0], captures: { phrase: 'mètre' } }]
+  );
+});
+
 test('numeric_pattern treats configured units as literal data, not regex syntax', () => {
   const conversation = makeConversation([
     message(0, 'agent', 'ราคา 100 XX และ 200 .* และ 300 a|b')

@@ -516,7 +516,10 @@ function compileNumericPattern(match) {
       'rule.match.number_pattern must be integer, decimal, or grouped'
     );
   }
-  const units = sortedUniqueLiteralStrings(match.units, 'rule.match.units')
+  const units = [...new Set(
+    sortedUniqueLiteralStrings(match.units, 'rule.match.units')
+      .map(unit => unit.normalize('NFC'))
+  )]
     .sort((left, right) =>
       right.length - left.length || compareCodeUnits(left, right));
   const unitAlternation = units.map(escapeRegexLiteral).join('|');
@@ -644,7 +647,7 @@ function evaluateRule(rule, conversation) {
         }
         break;
       case 'numeric_pattern':
-        for (const capture of numericMatches(context.message.sourceText, match.numeric)) {
+        for (const capture of numericMatches(text, match.numeric)) {
           results.push({
             message_indexes: context.messageIndexes,
             captures: capture
