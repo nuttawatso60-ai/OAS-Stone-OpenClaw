@@ -1,4 +1,12 @@
 const { StaffPricingInputError, commandName, quoteStaffPrice } = require('./staff_pricing');
+const {
+  StaffKnowledgeError,
+  formatMaterials,
+  formatQuiz,
+  formatSizes,
+  formatTraining,
+  loadStaffKnowledge
+} = require('./staff_knowledge');
 
 class TelegramConfigError extends Error {
   constructor(message) {
@@ -93,6 +101,7 @@ function staffReply(text) {
       'เครื่องมือภายในสำหรับเจ้าของร้านและพนักงาน',
       'คำสั่งที่ใช้ได้:',
       '/price <วัสดุ> <กว้างxสูง> [จำนวน]',
+      '/materials, /sizes, /train, /quiz',
       'ตัวอย่าง: /price granite 30x20 2',
       'วัสดุ: granite, marble, acrylic, sandstone'
     ].join('\n');
@@ -104,6 +113,19 @@ function staffReply(text) {
     } catch (error) {
       if (error instanceof StaffPricingInputError) return error.message;
       return 'ไม่สามารถคำนวณราคาได้';
+    }
+  }
+
+  if (['/materials', '/sizes', '/train', '/quiz'].includes(command)) {
+    try {
+      if (command === '/materials') return formatMaterials();
+      const knowledge = loadStaffKnowledge();
+      if (command === '/sizes') return formatSizes(knowledge);
+      if (command === '/train') return formatTraining(knowledge);
+      return formatQuiz(knowledge);
+    } catch (error) {
+      if (error instanceof StaffKnowledgeError) return 'ข้อมูล Staff Knowledge ไม่พร้อมใช้งาน';
+      return 'ไม่สามารถแสดงข้อมูล Staff Knowledge ได้';
     }
   }
 

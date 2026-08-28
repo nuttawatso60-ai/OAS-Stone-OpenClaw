@@ -61,8 +61,8 @@
 **ทิศทาง Staff Assistant:**
 - `/price` คำนวณราคาจาก pricing engine แบบ deterministic โดยใช้ depth 3 mm,
   complexity standard, ไม่เร่ง, ไม่ทาสี และไม่ติดตั้ง
-- `/materials` และ `/sizes` ค้นข้อมูลมาตรฐานร้าน
-- `/train` และ `/quiz` สำหรับฝึกพนักงาน
+- `/materials` และ `/sizes` ค้นข้อมูลมาตรฐานร้าน โดย `/sizes` จะแจ้งว่ายังไม่ configured หากไม่มีข้อมูลยืนยัน
+- `/train` และ `/quiz` สำหรับฝึกพนักงานจากข้อมูล version-controlled
 - `/market` สำหรับ market intelligence ภายในร้าน
 
 ---
@@ -101,7 +101,7 @@ Telegram Staff Assistant
 ## TODO สำหรับเฟสถัดไป
 
 - [x] ต่อ `/price` เข้ากับ pricing engine แบบ deterministic
-- [ ] เพิ่ม knowledge base สำหรับ `/materials`, `/sizes`, `/train`, `/quiz`
+- [x] เพิ่ม knowledge base สำหรับ `/materials`, `/sizes`, `/train`, `/quiz`
 - [ ] เพิ่ม market intelligence collector และ `/market`
 - [ ] เชื่อม Facebook Messenger (Claire)
 - [ ] เพิ่ม image input (ภาพตัวอย่างป้าย)

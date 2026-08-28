@@ -18,6 +18,15 @@ const MATERIAL_ALIASES = new Map([
   ['sandstone', 'sandstone'], ['หินทราย', 'sandstone']
 ]);
 
+function getSupportedMaterials() {
+  const materials = new Map();
+  for (const [alias, canonical] of MATERIAL_ALIASES) {
+    if (!materials.has(canonical)) materials.set(canonical, []);
+    materials.get(canonical).push(alias);
+  }
+  return [...materials].map(([canonical, aliases]) => ({ canonical, aliases }));
+}
+
 function loadRules(rulesPath = DEFAULT_RULES_PATH) {
   return JSON.parse(fs.readFileSync(rulesPath, 'utf8'));
 }
@@ -105,6 +114,7 @@ function quoteStaffPrice(text, { rules = loadRules() } = {}) {
 module.exports = {
   StaffPricingInputError,
   commandName,
+  getSupportedMaterials,
   parsePriceCommand,
   quoteStaffPrice
 };
