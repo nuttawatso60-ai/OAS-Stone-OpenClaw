@@ -28,10 +28,33 @@ function parsePositiveNumber(value, field) {
   return parsed;
 }
 
+// Telegram appends "@botusername" to commands sent in groups and supergroups,
+// so "/price@oas_stone_shop_bot" must resolve to the same command as "/price".
+// The allowlist accepts negative group IDs specifically so the bot can serve a
+// staff group, which is exactly where the suffixed form is what clients send.
+function commandName(token) {
+  return typeof token === 'string' ? token.split('@', 1)[0].toLowerCase() : '';
+}
+
+// Number() accepts exponent, hex and signed forms, so "1e308" survived the
+// previous Number.isInteger check and pushed the totals to Infinity, which was
+// then rendered to staff as "∞ บาท". Quantity is restricted to canonical
+// decimal digits within the safe integer range instead.
+function parseQuantity(value) {
+  if (typeof value !== 'string' || !/^[0-9]+$/.test(value)) {
+    throw new StaffPricingInputError('จำนวนต้องเป็นเลขจำนวนเต็มบวก');
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < 1) {
+    throw new StaffPricingInputError('จำนวนต้องเป็นเลขจำนวนเต็มบวก');
+  }
+  return parsed;
+}
+
 function parsePriceCommand(text) {
   if (typeof text !== 'string') throw new StaffPricingInputError('รูปแบบคำสั่งไม่ถูกต้อง');
   const parts = text.trim().split(/\s+/);
-  if (parts[0] !== '/price') throw new StaffPricingInputError('ต้องเริ่มด้วย /price');
+  if (commandName(parts[0]) !== '/price') throw new StaffPricingInputError('ต้องเริ่มด้วย /price');
   if (parts.length < 3 || parts.length > 4) {
     throw new StaffPricingInputError('ใช้: /price <วัสดุ> <กว้าง_cm>x<สูง_cm> [จำนวน]');
   }
@@ -44,8 +67,7 @@ function parsePriceCommand(text) {
 
   const widthCm = parsePositiveNumber(sizeMatch[1], 'ความกว้าง');
   const heightCm = parsePositiveNumber(sizeMatch[2], 'ความสูง');
-  const quantity = parts[3] === undefined ? 1 : parsePositiveNumber(parts[3], 'จำนวน');
-  if (!Number.isInteger(quantity)) throw new StaffPricingInputError('จำนวนต้องเป็นเลขจำนวนเต็ม');
+  const quantity = parts[3] === undefined ? 1 : parseQuantity(parts[3]);
 
   return { material, widthCm, heightCm, quantity };
 }
@@ -82,6 +104,7 @@ function quoteStaffPrice(text, { rules = loadRules() } = {}) {
 
 module.exports = {
   StaffPricingInputError,
+  commandName,
   parsePriceCommand,
   quoteStaffPrice
 };

@@ -8,7 +8,8 @@ const {
   createClaireTelegramBot,
   createStaffTelegramBot,
   createTelegramClient,
-  parseAllowedChatIds
+  parseAllowedChatIds,
+  staffReply
 } = require('../tools/telegram_claire');
 const { collectChatIds } = require('../tools/telegram_chat_ids');
 
@@ -151,4 +152,30 @@ test('chat ID discovery returns metadata without message contents', () => {
   ]);
   assert.equal(JSON.stringify(chats).includes(token), false);
   assert.equal(JSON.stringify(chats).includes('private message'), false);
+});
+
+test('staff reply dispatches group command forms with the bot username suffix', () => {
+  assert.equal(staffReply('/start@oas_stone_shop_bot'), staffReply('/start'));
+  assert.equal(staffReply('/help@oas_stone_shop_bot'), staffReply('/help'));
+  assert.equal(
+    staffReply('/price@oas_stone_shop_bot granite 30x20'),
+    staffReply('/price granite 30x20')
+  );
+  assert.match(staffReply('/price@oas_stone_shop_bot granite 30x20'), /รวมประมาณ:/);
+});
+
+test('staff reply never renders Infinity for oversized quantities', () => {
+  const reply = staffReply('/price granite 30x20 1e308');
+  assert.equal(reply.includes('∞'), false);
+  assert.equal(reply.includes('Infinity'), false);
+  assert.match(reply, /จำนวนต้องเป็นเลขจำนวนเต็มบวก/);
+});
+
+test('unknown commands fall through without echoing the input back', () => {
+  const secret = 'staff-only-8985228277';
+  for (const text of [`/unknown ${secret}`, secret, '/pricey granite 30x20']) {
+    const reply = staffReply(text);
+    assert.equal(reply.includes(secret), false, `reply echoed input for ${text}`);
+    assert.match(reply, /ใช้ \/help/);
+  }
 });

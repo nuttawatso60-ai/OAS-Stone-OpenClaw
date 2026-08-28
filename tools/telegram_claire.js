@@ -1,4 +1,4 @@
-const { StaffPricingInputError, quoteStaffPrice } = require('./staff_pricing');
+const { StaffPricingInputError, commandName, quoteStaffPrice } = require('./staff_pricing');
 
 class TelegramConfigError extends Error {
   constructor(message) {
@@ -84,7 +84,10 @@ function createTelegramClient({ token, fetchImpl = globalThis.fetch } = {}) {
 
 function staffReply(text) {
   const normalized = typeof text === 'string' ? text.trim() : '';
-  if (normalized === '/start' || normalized === '/help') {
+  // Group and supergroup clients send "/help@botusername", so dispatch on the
+  // command name rather than on the raw text.
+  const command = commandName(normalized.split(/\s+/, 1)[0]);
+  if (command === '/start' || command === '/help') {
     return [
       'OAS Stone Staff Assistant',
       'เครื่องมือภายในสำหรับเจ้าของร้านและพนักงาน',
@@ -95,7 +98,7 @@ function staffReply(text) {
     ].join('\n');
   }
 
-  if (normalized === '/price' || normalized.startsWith('/price ')) {
+  if (command === '/price') {
     try {
       return quoteStaffPrice(normalized);
     } catch (error) {
