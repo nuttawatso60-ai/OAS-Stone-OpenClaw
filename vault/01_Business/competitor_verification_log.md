@@ -27,3 +27,13 @@
 | บ้านทำป้าย — Kalasin branch lead | [Facebook group/profile lead](https://www.facebook.com/groups/1703713003177632/user/100012742930398/) + public business search | ⚠️ User correction identifies this lead as related to บ้านทำป้าย in Kalasin; no public business-level source confirms the branch, keep as supporting intelligence only |
 | พลาญชัยป้ายหิน101 | Facebook profile/page `https://www.facebook.com/profile.php?id=61566473556055&sk=reels_tab` + exact-name public search | Facebook lead supplied: พลาญชัยป้ายหิน101; public identity/location linkage not independently confirmed yet. Existing official PEA/OIC evidence remains authoritative. |
 | ร้านผ่องแกรนิต | new public-source search | ❌ ผลที่พบเป็น `ร้านผ่องใสแกรนิต` คนละชื่อและไม่ยืนยัน Roi Et |
+
+## 2026-08-28 — public-source verification round 3
+
+| คู่แข่ง | source type ใหม่ | ผล |
+|---|---|---|
+| ป้ายหินแกะสลัก เกษตรวิสัย | exact-name, `MH4P+GRV`, Google/Maps-style, directory and local-government search | ⚠️ พบ location/business lead แต่ผลใหม่เป็นข้อมูลทั่วไป/ธุรกิจอื่น; ไม่พบ stable public URL ที่ผูก exact identity กับเกษตรวิสัย/ร้อยเอ็ด; keep `pending_verification` |
+| ชินนะ แกะสลักป้ายหิน | exact-name, Page ID, Google/Maps-style, local procurement and public business search | ❌ ไม่พบ source ใหม่ที่ยืนยัน exact identity + Roi Et; keep `pending_verification` |
+| ร้านผ่องแกรนิต | exact-name, Roi Et, Google/Maps-style, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; keep `pending_verification` |
+| บ้านทำป้าย | exact coordinates `16.0356508,103.6562492`, Google/Maps-style and address-linked search | Google Street View lead at 16.0356508,103.6562492 is geographically consistent with Rop Mueang, Roi Et; business identity still requires independent public linkage. |
+| บ้านทำป้าย — Kalasin lead | Google Maps/Street View, `16.4267193,103.5183828` | location confirmed as ต.เหนือ อ.เมืองกาฬสินธุ์ จ.กาฬสินธุ์; business-name/brand linkage still requires public verification |
