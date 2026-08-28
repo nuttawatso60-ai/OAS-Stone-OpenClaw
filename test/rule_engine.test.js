@@ -469,7 +469,8 @@ test('regex_anchored documents conservative budget false positives', () => {
 
   // These quantifiers operate on disjoint atoms, but the current conservative
   // budget intentionally rejects them until a separate ambiguity analysis is
-  // designed and reviewed.
+  // designed and reviewed. Naive adjacency-only analysis is unsafe: nullable
+  // closure can reconnect separated atoms, as in a{0,100}b?a{0,100}.
   for (const pattern of safeLooking) {
     assert.throws(
       () => evaluateRule(makeRule('budget_false_positive', 'regex_anchored', { pattern }), conversation),
