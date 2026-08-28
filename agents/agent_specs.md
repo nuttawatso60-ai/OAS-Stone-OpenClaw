@@ -64,11 +64,12 @@ load pricing_rules.json
 - คำนวณราคารวมทุก job
 - สรุปรายได้รวม (ประมาณ)
 
-**ใน v0.2+ (TODO):**
-- บันทึก job ลง SQLite
-- เพิ่ม status: รอผลิต / กำลังผลิต / เสร็จแล้ว / ส่งแล้ว
+**ใน v0.2+ ที่ทำแล้ว:**
+- บันทึก job ลง SQLite และติดตาม status: รอผลิต / กำลังผลิต / เสร็จแล้ว / ส่งแล้ว
+- รายงานสถานะ คิวงาน รายวัน และรายสัปดาห์ผ่าน OPS API
+
+**ยังไม่อยู่ใน scope:**
 - แจ้งเตือนผ่าน Telegram
-- รายงานรายวัน / รายสัปดาห์
 
 ---
 
@@ -92,6 +93,12 @@ OPS     →  สรุปรายการ / ราคารวม
 - [x] เพิ่ม status tracking ตามลำดับ รอผลิต → กำลังผลิต → เสร็จแล้ว → ส่งแล้ว
 - [x] เพิ่ม API `POST /api/jobs`, `GET /api/jobs`, `GET /api/jobs/:jobId` และ `PATCH /api/jobs/:jobId/status`
 - [x] เก็บ pricing snapshot และยอดเงินเป็น satang ณ เวลาสร้าง job
+- [x] เพิ่ม OPS summary, queue และรายงานรายวัน/รายสัปดาห์ โดยใช้เวลา Asia/Bangkok แบบคงที่
+- [x] นิยาม created จาก `created_at` และ delivered จาก `updated_at` เฉพาะงานสถานะ `ส่งแล้ว`
+
+ข้อจำกัดการรายงาน:
+- ยังไม่มี completion-at history; delivered จึงอิง `updated_at` ของสถานะ terminal `ส่งแล้ว`
+- server bind เฉพาะ `127.0.0.1`; การเปิด LAN ต้องมีการตัดสินใจและเพิ่ม authentication/access control ก่อน
 
 ## TODO สำหรับเฟสถัดไป
 
