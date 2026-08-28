@@ -19,7 +19,7 @@
 
 | คู่แข่ง | source type ที่ค้น | ผล |
 |---|---|---|
-| ฟ้าตากแกรนิต | Roi Et provincial police meeting report | ✅ ยืนยันชื่อและที่อยู่ในจังหวัดร้อยเอ็ด; upgrade `ran-fa-tak` |
+| ฟ้าตากแกรนิต | official Roi Et government/police report + public directory + Facebook lead | ✅ ยืนยันชื่อและที่อยู่ในจังหวัดร้อยเอ็ด; upgraded `ran-fa-tak`; official PDF เป็นแหล่ง authoritative, Facebook ยังไม่ถูกเพิ่มเป็น source |
 | ป้ายหินแกะสลัก เกษตรวิสัย | public business/search pages | ❌ ยังไม่พบ stable source ที่ยืนยัน exact identity เพียงพอ |
 | บ้านทำป้าย | new public-source search | ❌ ผลที่พบเป็นธุรกิจชื่อใกล้เคียงในนครราชสีมา ไม่ยืนยัน Roi Et |
 | ชินนะ แกะสลักป้ายหิน | exact-name public search | ❌ ไม่พบ source ที่ยืนยัน exact identity + Roi Et/service; Facebook group/profile lead ที่เคยผูกกับรายการนี้ถูกแก้ไขแล้วว่าเป็นของ `บ้านทำป้าย` สาขากาฬสินธุ์ |
