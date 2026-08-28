@@ -82,6 +82,12 @@ Staff knowledge commands are `/materials`, `/sizes`, `/train`, and `/quiz`.
 Their editable content is in `data\staff_knowledge.json`; standard sizes remain
 explicitly unconfigured until the business provides authoritative guidance.
 
+Market Intelligence is internal-only and has no scraping framework yet. The
+`/market` command reads `data\competitors.json` and
+`data\market_observations.json`; empty or unconfigured data returns setup
+guidance. Every observation requires a source URL and observed timestamp, and
+the digest separates verified observations from interpretation.
+
 ## Workspace Structure
 
 ```text
@@ -93,12 +99,15 @@ OAS-Stone-OpenClaw/
 |   |-- pricing_rules.json
 |   |-- sample_jobs.json
 |   |-- staff_knowledge.json
+|   |-- competitors.json
+|   |-- market_observations.json
 |   |-- legacy_python_pricing_rules.json
 |   `-- legacy_python_sample_jobs.json
 |-- logs/
 |-- tools/
 |   |-- pricing_engine.js
 |   |-- staff_knowledge.js
+|   |-- market_intelligence.js
 |   `-- thai-token-optimizer/
 |-- vault/
 |   |-- 00_System/

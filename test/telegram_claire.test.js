@@ -191,6 +191,14 @@ test('staff knowledge commands support Telegram group suffixes', () => {
   }
 });
 
+test('market command is internal, deterministic, and supports group suffixes', () => {
+  const market = staffReply('/market');
+  assert.equal(staffReply('/market@oas_stone_shop_bot'), market);
+  assert.match(market, /Verified observations/);
+  assert.match(market, /ยังไม่ได้ตั้งค่า competitor registry/);
+  assert.doesNotMatch(market, /base_per_cm2|cnc_rate_per_minute/);
+});
+
 test('unknown commands fall through without echoing the input back', () => {
   const secret = 'staff-only-8985228277';
   for (const text of [`/unknown ${secret}`, secret, '/pricey granite 30x20']) {
