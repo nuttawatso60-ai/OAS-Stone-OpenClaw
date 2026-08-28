@@ -87,6 +87,21 @@ test('pending competitors are listed by name but cannot produce verified observa
   }), MarketDataError);
 });
 
+test('Roi Et registry keeps only sufficiently evidenced competitors verified', () => {
+  const registry = loadCompetitorRegistry();
+  const verified = registry.competitors.filter(competitor => competitor.verificationStatus === 'verified');
+  const pending = registry.competitors.filter(competitor => competitor.verificationStatus === 'pending_verification');
+  assert.equal(registry.competitors.length, 6);
+  assert.equal(verified.length, 1);
+  assert.equal(pending.length, 5);
+  assert.ok(registry.competitors.every(competitor => competitor.province === 'Roi Et'));
+  assert.deepEqual(verified.map(competitor => competitor.name), ['พลาญชัยป้ายหิน']);
+  assert.ok(verified[0].sourceUrls.length > 0);
+  const observations = loadObservations();
+  assert.equal(observations.length, 1);
+  assert.equal(observations[0].competitorId, verified[0].id);
+});
+
 test('digest filters observations to the selected UTC date', () => {
   const registry = {
     version: 1,
