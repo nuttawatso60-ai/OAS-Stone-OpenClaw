@@ -147,8 +147,8 @@ test('chat ID discovery returns metadata without message contents', () => {
   ]);
 
   assert.deepEqual(chats, [
-    { id: '99', type: 'private', username: 'staff' },
-    { id: '-1001', type: 'supergroup', username: null }
+    { id: '99', type: 'private' },
+    { id: '-1001', type: 'supergroup' }
   ]);
   assert.equal(JSON.stringify(chats).includes(token), false);
   assert.equal(JSON.stringify(chats).includes('private message'), false);

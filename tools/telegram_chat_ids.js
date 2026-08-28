@@ -13,8 +13,7 @@ function collectChatIds(updates) {
     if (!seen.has(id)) {
       seen.set(id, {
         id,
-        type: typeof chat.type === 'string' ? chat.type : 'unknown',
-        username: typeof chat.username === 'string' ? chat.username : null
+        type: typeof chat.type === 'string' ? chat.type : 'unknown'
       });
     }
   }
