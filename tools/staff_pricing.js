@@ -12,7 +12,7 @@ class StaffPricingInputError extends Error {
 }
 
 const MATERIAL_ALIASES = new Map([
-  ['granite', 'granite'], ['แกรนิต', 'granite'], ['หินแกรนิต', 'granite'],
+  ['granite', 'granite'], ['แกรนิต', 'granite'],
   ['marble', 'marble'], ['หินอ่อน', 'marble'],
   ['acrylic', 'acrylic'], ['อะคริลิก', 'acrylic'], ['อะคริลิค', 'acrylic'],
   ['sandstone', 'sandstone'], ['หินทราย', 'sandstone']
@@ -32,7 +32,7 @@ function parsePriceCommand(text) {
   if (typeof text !== 'string') throw new StaffPricingInputError('รูปแบบคำสั่งไม่ถูกต้อง');
   const parts = text.trim().split(/\s+/);
   if (parts[0] !== '/price') throw new StaffPricingInputError('ต้องเริ่มด้วย /price');
-  if (parts.length < 4 || parts.length > 5) {
+  if (parts.length < 3 || parts.length > 4) {
     throw new StaffPricingInputError('ใช้: /price <วัสดุ> <กว้าง_cm>x<สูง_cm> [จำนวน]');
   }
 
@@ -71,12 +71,12 @@ function quoteStaffPrice(text, { rules = loadRules() } = {}) {
 
   return [
     `ประเมินราคา ${input.material} ${input.widthCm}×${input.heightCm} ซม. จำนวน ${input.quantity}`,
-    `พื้นที่รวมต่อชิ้น: ${formatBaht(result.area_cm2)} ตร.ซม.`,
+    `พื้นที่ต่อชิ้น: ${formatBaht(result.area_cm2)} ตร.ซม.`,
     `ค่าวัสดุ: ${formatBaht(result.breakdown.material)} บาท`,
     `ค่า CNC: ${formatBaht(result.breakdown.cnc)} บาท`,
     `ค่าเตรียมงาน: ${formatBaht(result.breakdown.setup)} บาท`,
     `รวมประมาณ: ${formatBaht(result.total)} บาท`,
-    'หมายเหตุ: ใช้ค่ามาตรฐาน depth 3 mm, complexity standard, ไม่เร่ง, ไม่ทาสี, ไม่ติดตั้ง'
+    'ค่ามาตรฐาน: depth 3 mm, complexity standard, ไม่เร่ง, ไม่ทาสี, ไม่ติดตั้ง'
   ].join('\n');
 }
 
