@@ -94,6 +94,12 @@ function sortObservations(observations) {
   });
 }
 
+// Daily reports use UTC calendar dates. This keeps an observation's selected
+// day deterministic regardless of the machine's local timezone.
+function observationReportDate(observedAt) {
+  return new Date(observedAt).toISOString().slice(0, 10);
+}
+
 function buildDailyDigest({ registry, observations = [], date = new Date().toISOString().slice(0, 10) } = {}) {
   validateCompetitorRegistry(registry);
   if (!Array.isArray(observations)) throw new MarketDataError('market observations are invalid');
@@ -103,14 +109,17 @@ function buildDailyDigest({ registry, observations = [], date = new Date().toISO
   const competitorById = new Map(registry.competitors.map(competitor => [competitor.id, competitor]));
   const competitorIds = new Set(competitorById.keys());
   for (const observation of observations) validateObservation(observation, competitorIds);
+  const selectedObservations = observations.filter(
+    observation => observationReportDate(observation.observedAt) === date
+  );
 
   const lines = [`Market Intelligence รายวัน — ${date}`, '', 'Verified observations'];
   if (registry.competitors.length === 0) {
     lines.push('ยังไม่ได้ตั้งค่า competitor registry', 'เพิ่มคู่แข่งที่ยืนยันแล้วก่อนเริ่มติดตาม');
-  } else if (observations.length === 0) {
-    lines.push('ยังไม่มีข้อมูลที่ตรวจสอบแหล่งอ้างอิงได้');
+  } else if (selectedObservations.length === 0) {
+    lines.push(`ไม่มีข้อมูลที่ตรวจสอบแหล่งอ้างอิงได้สำหรับวันที่รายงาน ${date}`);
   } else {
-    for (const observation of sortObservations(observations)) {
+    for (const observation of sortObservations(selectedObservations)) {
       const competitor = competitorById.get(observation.competitorId);
       lines.push(
         `- ${competitor.name} (${observation.observedAt})`,

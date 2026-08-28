@@ -87,6 +87,8 @@ Market Intelligence is internal-only and has no scraping framework yet. The
 `data\market_observations.json`; empty or unconfigured data returns setup
 guidance. Every observation requires a source URL and observed timestamp, and
 the digest separates verified observations from interpretation.
+Daily digest selection uses the UTC calendar date from each observation's
+`observedAt`; observations from other dates are excluded.
 
 ## Workspace Structure
 
