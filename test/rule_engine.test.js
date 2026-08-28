@@ -507,6 +507,53 @@ test('regex_anchored relaxes only provably disjoint simple quantifiers', () => {
   );
 });
 
+test('regex_anchored relaxation remains bounded for adversarial simple patterns', () => {
+  const conversation = makeConversation([message(0, 'customer', 'x'.repeat(REGEX_MAX_TEXT_LENGTH))]);
+  const safeAscii = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
+  const optionalAsciiAtoms = `^${safeAscii.map(character => `${character}?`).join('')}$`;
+  const disjointClasses = '^[0-9]{0,30}[A-Z]{0,30}[a-z]{0,30}[ -/]{0,30}[:@]{0,30}$';
+  const separatedRepeats = '^' + [
+    '[0-9]{0,20}A[a-z]{0,20}',
+    '[A-Z]{0,20}0[ -/]{0,20}',
+    '[a-z]{0,20}![:@]{0,20}'
+  ].join('') + '$';
+  const repeatedSetsWithSeparators = '^[0-9]{0,20}A[a-z]{0,20}B[0-9]{0,20}C[A-Z]{0,20}D[0-9]{0,20}$';
+  const mixedQuantifiers = '^[0-9]{0,40}A[a-z]?B[0-9]{1,40}C[A-Z]{0,40}$';
+  const nearPatternCap = '^' + 'x'.repeat(120) + safeAscii.map(character => `${character}?`).join('') + '$';
+
+  const patterns = [
+    optionalAsciiAtoms,
+    disjointClasses,
+    separatedRepeats,
+    repeatedSetsWithSeparators,
+    mixedQuantifiers,
+    nearPatternCap
+  ];
+
+  for (const pattern of patterns) {
+    assert.ok(pattern.length <= 256, `pattern must fit the length cap: ${pattern.length}`);
+    assert.doesNotThrow(
+      () => evaluateRule(makeRule('adversarial_simple', 'regex_anchored', { pattern }), conversation),
+      `expected bounded simple pattern to pass: ${pattern}`
+    );
+  }
+
+  const mustReject = [
+    `^${Array.from({ length: 70 }, () => 'a?').join('')}$`,
+    '^' + '[0-9]{0,20}'.repeat(10) + '$',
+    '^[0-9]{0,60}[a-z]?[0-9]{0,60}$',
+    '^[0-9]{0,50}\\d{0,50}$'
+  ];
+
+  for (const pattern of mustReject) {
+    assert.throws(
+      () => evaluateRule(makeRule('adversarial_ambiguous', 'regex_anchored', { pattern }), conversation),
+      /backtracking budget/,
+      `expected ambiguous simple pattern to remain rejected: ${pattern}`
+    );
+  }
+});
+
 test('regex_anchored still accepts realistic patterns within the budget', () => {
   const conversation = makeConversation([message(0, 'customer', 'ราคา 123')]);
   const allowed = [
