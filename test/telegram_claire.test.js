@@ -63,7 +63,13 @@ test('Telegram errors do not expose token or upstream description', async () => 
 test('Claire replies to start/help with onboarding text', () => {
   assert.match(claireReply('/start'), /Claire/);
   assert.match(claireReply('/start'), /ขนาด/);
+  assert.match(claireReply('/start'), /\/market/);
   assert.equal(claireReply('/help'), claireReply('/start'));
+});
+
+test('Claire market command uses injected cited digest', () => {
+  const digest = 'รายงานตลาด\nแหล่งข้อมูล: https://example.com';
+  assert.equal(claireReply('/market', { marketDigest: () => digest }), digest);
 });
 
 test('bot advances offset, replies to text, and ignores non-text messages', async () => {
@@ -100,6 +106,24 @@ test('bot advances offset, replies to text, and ignores non-text messages', asyn
   assert.equal(sent.length, 1);
   assert.equal(sent[0].chatId, 99);
   assert.match(sent[0].text, /Claire/);
+});
+
+test('bot routes market command through injected digest', async () => {
+  const sent = [];
+  const bot = createClaireTelegramBot({
+    client: {
+      async getUpdates() {
+        return [{ update_id: 20, message: { chat: { id: 7 }, text: '/market' } }];
+      },
+      async sendMessage(chatId, text) {
+        sent.push({ chatId, text });
+      }
+    },
+    marketDigest: () => 'market-ok'
+  });
+
+  await bot.pollOnce({ timeout: 1 });
+  assert.deepEqual(sent, [{ chatId: 7, text: 'market-ok' }]);
 });
 
 test('bot rejects malformed getUpdates results', async () => {
