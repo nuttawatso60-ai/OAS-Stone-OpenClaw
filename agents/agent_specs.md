@@ -2,7 +2,7 @@
 
 ## ภาพรวม
 
-ระบบใช้ agent 3 ตัวทำงานร่วมกัน ยังไม่เชื่อม Telegram / Facebook / Database ใน v0.1
+ระบบใช้ agent หลักสำหรับรับงาน คำนวณราคา และงานปฏิบัติการ โดยช่องทาง Telegram ถูกกำหนดเป็นเครื่องมือภายในร้านสำหรับเจ้าของและพนักงาน
 
 ---
 
@@ -25,13 +25,13 @@
 **ข้อจำกัด v0.1:**
 - รับข้อมูลผ่านการพิมพ์เท่านั้น (CLI หรือ prompt)
 - ยังไม่รับภาพ / ไฟล์แนบ
-- ยังไม่เชื่อม Telegram / Line
+- Telegram ปัจจุบันไม่ได้ใช้เป็นช่อง customer intake
 
 ---
 
 ## Max — Quotation Agent
 
-**บทบาท:** รับ job dict จาก Claire → รัน pricing_engine.py → ส่งใบเสนอราคากลับ
+**บทบาท:** รับ job dict จาก Claire → รัน pricing engine → ส่งใบเสนอราคากลับ
 
 **Input:** job dict (JSON)
 
@@ -39,14 +39,6 @@
 - ใบเสนอราคาแบบ breakdown (รายการ + ราคา + รวม)
 - ระบุว่าเป็น "ราคาประมาณ" เสมอ
 - แนะนำให้ลูกค้ายืนยันกับร้านก่อนโอนเงิน
-
-**Logic:**
-```
-load pricing_rules.json
-→ calculate(job, rules)
-→ format print_quote()
-→ return quote string
-```
 
 **ข้อจำกัด v0.1:**
 - ราคาเป็นการประมาณเบื้องต้นเท่านั้น
@@ -57,32 +49,35 @@ load pricing_rules.json
 
 ## OPS — Operations Manager Agent
 
-**บทบาท:** ติดตามสถานะงาน / แจ้งเตือนภายใน
-
-**ใน v0.1 ทำได้:**
-- แสดงรายการ job ทั้งหมดจาก sample_jobs.json
-- คำนวณราคารวมทุก job
-- สรุปรายได้รวม (ประมาณ)
+**บทบาท:** ติดตามสถานะงาน / รายงานภายใน / เครื่องมือช่วยพนักงาน
 
 **ใน v0.2+ ที่ทำแล้ว:**
 - บันทึก job ลง SQLite และติดตาม status: รอผลิต / กำลังผลิต / เสร็จแล้ว / ส่งแล้ว
 - รายงานสถานะ คิวงาน รายวัน และรายสัปดาห์ผ่าน OPS API
+- Telegram transport สำหรับ Staff Assistant แบบ long polling
+- จำกัด Telegram ด้วย `TELEGRAM_ALLOWED_CHAT_IDS`; ผู้ใช้นอก allowlist จะไม่ได้รับคำตอบ
+- ถ้า allowlist หายหรือรูปแบบผิด bot จะไม่เริ่มทำงาน
 
-**ยังไม่อยู่ใน scope:**
-- แจ้งเตือนผ่าน Telegram
+**ทิศทาง Staff Assistant:**
+- `/price` คำนวณราคาจาก pricing engine แบบ deterministic
+- `/materials` และ `/sizes` ค้นข้อมูลมาตรฐานร้าน
+- `/train` และ `/quiz` สำหรับฝึกพนักงาน
+- `/market` สำหรับ market intelligence ภายในร้าน
 
 ---
 
-## Data Flow v0.1
+## Data Flow
 
 ```
-ลูกค้า (CLI input)
-    ↓
-Claire  →  job dict (JSON)
-    ↓
-Max     →  pricing_engine.py  →  ใบเสนอราคา
-    ↓
-OPS     →  สรุปรายการ / ราคารวม
+ลูกค้า → Claire → job dict → Max → pricing engine
+                             ↓
+                           OPS / SQLite
+
+เจ้าของร้าน / พนักงานที่อยู่ allowlist
+             ↓
+Telegram Staff Assistant
+             ↓
+ราคา / ขนาด / วัสดุ / training / market intelligence
 ```
 
 ---
@@ -95,6 +90,8 @@ OPS     →  สรุปรายการ / ราคารวม
 - [x] เก็บ pricing snapshot และยอดเงินเป็น satang ณ เวลาสร้าง job
 - [x] เพิ่ม OPS summary, queue และรายงานรายวัน/รายสัปดาห์ โดยใช้เวลา Asia/Bangkok แบบคงที่
 - [x] นิยาม created จาก `created_at` และ delivered จาก `updated_at` เฉพาะงานสถานะ `ส่งแล้ว`
+- [x] เพิ่ม Telegram Staff Assistant transport
+- [x] เพิ่ม Telegram staff allowlist แบบ fail-closed และ silent deny
 
 ข้อจำกัดการรายงาน:
 - ยังไม่มี completion-at history; delivered จึงอิง `updated_at` ของสถานะ terminal `ส่งแล้ว`
@@ -102,7 +99,9 @@ OPS     →  สรุปรายการ / ราคารวม
 
 ## TODO สำหรับเฟสถัดไป
 
-- [ ] เชื่อม Telegram bot (Claire)
+- [ ] ต่อ `/price` เข้ากับ pricing engine แบบ deterministic
+- [ ] เพิ่ม knowledge base สำหรับ `/materials`, `/sizes`, `/train`, `/quiz`
+- [ ] เพิ่ม market intelligence collector และ `/market`
 - [ ] เชื่อม Facebook Messenger (Claire)
 - [ ] เพิ่ม image input (ภาพตัวอย่างป้าย)
 - [ ] PDF quote export
