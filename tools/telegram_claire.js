@@ -7,6 +7,7 @@ const {
   formatTraining,
   loadStaffKnowledge
 } = require('./staff_knowledge');
+const { MarketDataError, buildConfiguredDailyDigest } = require('./market_intelligence');
 
 class TelegramConfigError extends Error {
   constructor(message) {
@@ -101,7 +102,7 @@ function staffReply(text) {
       'เครื่องมือภายในสำหรับเจ้าของร้านและพนักงาน',
       'คำสั่งที่ใช้ได้:',
       '/price <วัสดุ> <กว้างxสูง> [จำนวน]',
-      '/materials, /sizes, /train, /quiz',
+      '/materials, /sizes, /train, /quiz, /market',
       'ตัวอย่าง: /price granite 30x20 2',
       'วัสดุ: granite, marble, acrylic, sandstone'
     ].join('\n');
@@ -126,6 +127,15 @@ function staffReply(text) {
     } catch (error) {
       if (error instanceof StaffKnowledgeError) return 'ข้อมูล Staff Knowledge ไม่พร้อมใช้งาน';
       return 'ไม่สามารถแสดงข้อมูล Staff Knowledge ได้';
+    }
+  }
+
+  if (command === '/market') {
+    try {
+      return buildConfiguredDailyDigest();
+    } catch (error) {
+      if (error instanceof MarketDataError) return 'ข้อมูล Market Intelligence ไม่พร้อมใช้งาน';
+      return 'ไม่สามารถแสดงข้อมูล Market Intelligence ได้';
     }
   }
 
