@@ -35,3 +35,4 @@
 | ป้ายหินแกะสลัก เกษตรวิสัย | exact-name, `MH4P+GRV`, Google/Maps-style and directory search | ⚠️ พบ location/business lead แต่ไม่พบ stable public URL ที่ผูก exact identity กับเกษตรวิสัย/ร้อยเอ็ด; keep `pending_verification` |
 | ชินนะ แกะสลักป้ายหิน | exact-name, Page ID, local procurement and public business search | ❌ ไม่พบ source ใหม่ที่ยืนยัน exact identity + Roi Et; keep `pending_verification` |
 | ร้านผ่องแกรนิต | exact-name, Roi Et, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; keep `pending_verification` |
+| บ้านทำป้าย | exact coordinates `16.0356508,103.6562492`, Google/Maps-style and address-linked search | Google Street View lead at 16.0356508,103.6562492 is geographically consistent with Rop Mueang, Roi Et; business identity still requires independent public linkage. |
