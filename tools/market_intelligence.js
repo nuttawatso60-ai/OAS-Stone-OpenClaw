@@ -27,8 +27,27 @@ function validateCompetitorRegistry(registry) {
   const ids = new Set();
   for (const competitor of registry.competitors) {
     if (!competitor || typeof competitor.id !== 'string' || competitor.id.trim() === ''
-      || typeof competitor.name !== 'string' || competitor.name.trim() === '') {
+      || typeof competitor.name !== 'string' || competitor.name.trim() === ''
+      || typeof competitor.province !== 'string' || competitor.province.trim() === ''
+      || !['verified', 'pending_verification'].includes(competitor.verificationStatus)) {
       throw new MarketDataError('competitor registry is invalid');
+    }
+    if (competitor.sourceUrls !== undefined && !Array.isArray(competitor.sourceUrls)) {
+      throw new MarketDataError('competitor registry is invalid');
+    }
+    if (Array.isArray(competitor.sourceUrls)) {
+      for (const sourceUrl of competitor.sourceUrls) {
+        try {
+          const url = new URL(sourceUrl);
+          if (!['http:', 'https:'].includes(url.protocol)) throw new Error('unsupported protocol');
+        } catch (error) {
+          throw new MarketDataError('competitor registry is invalid');
+        }
+      }
+    }
+    if (competitor.verificationStatus === 'verified'
+      && (!Array.isArray(competitor.sourceUrls) || competitor.sourceUrls.length === 0)) {
+      throw new MarketDataError('verified competitor sourceUrls are required');
     }
     if (ids.has(competitor.id)) throw new MarketDataError('competitor registry is invalid');
     ids.add(competitor.id);
@@ -64,10 +83,14 @@ function validateObservations(document, registry) {
   if (!document || document.version !== 1 || !Array.isArray(document.observations)) {
     throw new MarketDataError('market observations are invalid');
   }
-  const competitorIds = new Set(registry.competitors.map(competitor => competitor.id));
+  const competitorById = new Map(registry.competitors.map(competitor => [competitor.id, competitor]));
+  const competitorIds = new Set(competitorById.keys());
   const seen = new Set();
   for (const observation of document.observations) {
     validateObservation(observation, competitorIds);
+    if (competitorById.get(observation.competitorId).verificationStatus !== 'verified') {
+      throw new MarketDataError('market observation competitor is pending verification');
+    }
     const key = `${observation.competitorId}\u0000${observation.observedAt}\u0000${observation.sourceUrl}\u0000${observation.summary}`;
     if (seen.has(key)) throw new MarketDataError('market observations are invalid');
     seen.add(key);
@@ -108,7 +131,12 @@ function buildDailyDigest({ registry, observations = [], date = new Date().toISO
   }
   const competitorById = new Map(registry.competitors.map(competitor => [competitor.id, competitor]));
   const competitorIds = new Set(competitorById.keys());
-  for (const observation of observations) validateObservation(observation, competitorIds);
+  for (const observation of observations) {
+    validateObservation(observation, competitorIds);
+    if (competitorById.get(observation.competitorId).verificationStatus !== 'verified') {
+      throw new MarketDataError('market observation competitor is pending verification');
+    }
+  }
   const selectedObservations = observations.filter(
     observation => observationReportDate(observation.observedAt) === date
   );
@@ -127,6 +155,14 @@ function buildDailyDigest({ registry, observations = [], date = new Date().toISO
         `  Source: ${observation.sourceUrl}`
       );
     }
+  }
+
+  const pendingCompetitors = registry.competitors
+    .filter(competitor => competitor.verificationStatus === 'pending_verification')
+    .sort((left, right) => left.name.localeCompare(right.name));
+  if (pendingCompetitors.length > 0) {
+    lines.push('', 'Competitors pending verification');
+    for (const competitor of pendingCompetitors) lines.push(`- ${competitor.name}`);
   }
 
   lines.push('', 'Interpretation', 'ไม่มีการตีความอัตโนมัติ ใช้เฉพาะข้อมูลที่มีแหล่งอ้างอิง');
