@@ -19,8 +19,30 @@ function tempJson(value) {
   return filePath;
 }
 
+function verifiedCompetitor(id = 'stone-a', name = 'Stone A') {
+  return {
+    id,
+    name,
+    province: 'Roi Et',
+    verificationStatus: 'verified',
+    sourceUrls: ['https://example.com/business']
+  };
+}
+
+function pendingCompetitor(id = 'stone-p', name = 'Stone Pending') {
+  return {
+    id,
+    name,
+    province: 'Roi Et',
+    verificationStatus: 'pending_verification',
+    sourceUrls: []
+  };
+}
+
 test('empty registry returns setup guidance without fabricated content', () => {
-  const digest = buildConfiguredDailyDigest({ date: '2026-08-28' });
+  const registryPath = tempJson({ version: 1, competitors: [] });
+  const observationsPath = tempJson({ version: 1, observations: [] });
+  const digest = buildConfiguredDailyDigest({ registryPath, observationsPath, date: '2026-08-28' });
   assert.match(digest, /ยังไม่ได้ตั้งค่า competitor registry/);
   assert.match(digest, /Verified observations/);
   assert.match(digest, /Interpretation/);
@@ -28,22 +50,47 @@ test('empty registry returns setup guidance without fabricated content', () => {
 
 test('malformed registry and observations fail safely', () => {
   assert.throws(() => loadCompetitorRegistry(tempJson({ version: 2, competitors: [] })), MarketDataError);
-  const registry = { version: 1, competitors: [{ id: 'stone-a', name: 'Stone A' }] };
+  const registry = { version: 1, competitors: [verifiedCompetitor()] };
   assert.throws(() => loadObservations(tempJson({ version: 1, observations: [{ competitorId: 'stone-a' }] }), registry), MarketDataError);
   assert.throws(() => loadObservations(tempJson({ version: 1, observations: [{ competitorId: 'stone-a', summary: 'x', sourceUrl: 'ftp://example.com', observedAt: '2026-08-28T00:00:00Z' }] }), registry), MarketDataError);
 });
 
 test('unknown competitor IDs, missing URLs, and invalid timestamps fail closed', () => {
-  const registry = { version: 1, competitors: [{ id: 'stone-a', name: 'Stone A' }] };
+  const registry = { version: 1, competitors: [verifiedCompetitor()] };
   assert.throws(() => buildDailyDigest({ registry, observations: [{ competitorId: 'unknown', summary: 'x', sourceUrl: 'https://example.com', observedAt: '2026-08-28T00:00:00Z' }] }), MarketDataError);
   assert.throws(() => validateObservation({ competitorId: 'stone-a', summary: 'x', observedAt: '2026-08-28T00:00:00Z' }), MarketDataError);
   assert.throws(() => validateObservation({ competitorId: 'stone-a', summary: 'x', sourceUrl: 'https://example.com', observedAt: 'not-a-date' }), MarketDataError);
 });
 
+test('verification status and verified source requirements fail closed', () => {
+  assert.throws(() => loadCompetitorRegistry(tempJson({
+    version: 1,
+    competitors: [{ ...pendingCompetitor(), verificationStatus: 'maybe' }]
+  })), MarketDataError);
+  assert.throws(() => loadCompetitorRegistry(tempJson({
+    version: 1,
+    competitors: [{ ...verifiedCompetitor(), sourceUrls: [] }]
+  })), MarketDataError);
+  assert.doesNotThrow(() => loadCompetitorRegistry(tempJson({ version: 1, competitors: [pendingCompetitor()] })));
+});
+
+test('pending competitors are listed by name but cannot produce verified observations', () => {
+  const registry = { version: 1, competitors: [verifiedCompetitor(), pendingCompetitor()] };
+  const digest = buildDailyDigest({ registry, observations: [], date: '2026-08-28' });
+  assert.match(digest, /Competitors pending verification[\s\S]*Stone Pending/);
+  const verifiedSection = digest.split('\n\nCompetitors pending verification')[0];
+  assert.doesNotMatch(verifiedSection, /Stone Pending/);
+  assert.throws(() => buildDailyDigest({
+    registry,
+    observations: [{ competitorId: 'stone-p', summary: 'unsupported claim', sourceUrl: 'https://example.com/pending', observedAt: '2026-08-28T00:00:00Z' }],
+    date: '2026-08-28'
+  }), MarketDataError);
+});
+
 test('digest filters observations to the selected UTC date', () => {
   const registry = {
     version: 1,
-    competitors: [{ id: 'stone-b', name: 'Stone B' }, { id: 'stone-a', name: 'Stone A' }]
+    competitors: [verifiedCompetitor('stone-b', 'Stone B'), verifiedCompetitor('stone-a', 'Stone A')]
   };
   const observations = [
     { competitorId: 'stone-b', summary: 'B observation', sourceUrl: 'https://example.com/b', observedAt: '2026-08-28T02:00:00Z' },
@@ -65,7 +112,7 @@ test('digest filters observations to the selected UTC date', () => {
 });
 
 test('selected date with no observations does not show observations from other dates', () => {
-  const registry = { version: 1, competitors: [{ id: 'stone-a', name: 'Stone A' }] };
+  const registry = { version: 1, competitors: [verifiedCompetitor()] };
   const digest = buildDailyDigest({
     registry,
     observations: [{

@@ -1,4 +1,49 @@
 {
   "version": 1,
-  "competitors": []
+  "competitors": [
+    {
+      "id": "baan-tham-pai",
+      "name": "บ้านทำป้าย",
+      "province": "Roi Et",
+      "verificationStatus": "pending_verification",
+      "sourceUrls": []
+    },
+    {
+      "id": "phlanchai-pai-hin",
+      "name": "พลาญชัยป้ายหิน",
+      "province": "Roi Et",
+      "verificationStatus": "verified",
+      "sourceUrls": [
+        "https://www.oic.go.th/FILEWEB/CABINFOCENTER11/DRAWER038/GENERAL/DATA0002/00002266.PDF"
+      ]
+    },
+    {
+      "id": "chinna-kae-salak-pai-hin",
+      "name": "ชินนะ แกะสลักป้ายหิน",
+      "province": "Roi Et",
+      "verificationStatus": "pending_verification",
+      "sourceUrls": []
+    },
+    {
+      "id": "ran-fa-tak",
+      "name": "ร้านฟ้าตาก",
+      "province": "Roi Et",
+      "verificationStatus": "pending_verification",
+      "sourceUrls": []
+    },
+    {
+      "id": "ran-phong-granite",
+      "name": "ร้านผ่องแกรนิต",
+      "province": "Roi Et",
+      "verificationStatus": "pending_verification",
+      "sourceUrls": []
+    },
+    {
+      "id": "pai-hin-kae-salak-kasetwisai",
+      "name": "ป้ายหินแกะสลัก เกษตรวิสัย",
+      "province": "Roi Et",
+      "verificationStatus": "pending_verification",
+      "sourceUrls": []
+    }
+  ]
 }
