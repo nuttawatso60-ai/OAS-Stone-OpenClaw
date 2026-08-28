@@ -50,6 +50,34 @@ data\legacy_python_pricing_rules.json
 data\legacy_python_sample_jobs.json
 ```
 
+## Telegram Staff Assistant
+
+Telegram is internal staff tooling only. It is not a Claire customer-intake channel.
+The bot fails closed unless both `TELEGRAM_BOT_TOKEN` and a valid
+`TELEGRAM_ALLOWED_CHAT_IDS` comma-separated allowlist are set. Unauthorized chats
+are ignored without a reply.
+
+Run locally in PowerShell:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN = "<bot-token>"
+$env:TELEGRAM_ALLOWED_CHAT_IDS = "<chat-id>,<another-chat-id>"
+npm run telegram
+```
+
+Discover recent chat IDs without printing message contents or tokens:
+
+```powershell
+$env:TELEGRAM_BOT_TOKEN = "<bot-token>"
+npm run telegram:chat-ids
+```
+
+The internal `/price` command supports `/price granite 30x20`, an optional
+quantity, and Thai material aliases. It uses `data\pricing_rules.json` through
+the existing pricing engine with fixed assumptions: depth 3 mm, standard
+complexity, no rush, no paint, and no installation. Telegram responses expose
+calculated totals only, not pricing coefficients.
+
 ## Workspace Structure
 
 ```text
