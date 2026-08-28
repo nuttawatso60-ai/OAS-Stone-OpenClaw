@@ -280,7 +280,214 @@ function normalizedRegexFlags(flags) {
   return [...seen].sort(compareCodeUnits).join('');
 }
 
-function validateSafeRegexPattern(pattern) {
+function asciiSet(character) {
+  return new Set([character]);
+}
+
+function simpleEscapedAtom(body, index) {
+  const escaped = body[index + 1];
+  if (escaped === 'd') {
+    return {
+      nextIndex: index + 2,
+      characters: new Set('0123456789')
+    };
+  }
+  if (escaped === undefined || !'\\^$.[\\]{}()|?*+-'.includes(escaped)) {
+    return null;
+  }
+  return { nextIndex: index + 2, characters: asciiSet(escaped) };
+}
+
+function simpleClassToken(body, index) {
+  if (body[index] === '\\') {
+    const atom = simpleEscapedAtom(body, index);
+    if (atom === null) {
+      return null;
+    }
+    return {
+      ...atom,
+      singleCharacter: atom.characters.size === 1
+    };
+  }
+  const character = body[index];
+  if (character === undefined || character === ']' || character.charCodeAt(0) > 127) {
+    return null;
+  }
+  return {
+    nextIndex: index + 1,
+    characters: asciiSet(character),
+    singleCharacter: true
+  };
+}
+
+function parseSimpleAsciiClass(body, startIndex) {
+  let index = startIndex + 1;
+  if (body[index] === '^') {
+    return null;
+  }
+
+  const characters = new Set();
+  let hasContent = false;
+  while (index < body.length) {
+    if (body[index] === ']') {
+      return hasContent
+        ? { nextIndex: index + 1, characters }
+        : null;
+    }
+
+    const first = simpleClassToken(body, index);
+    if (first === null) {
+      return null;
+    }
+    index = first.nextIndex;
+
+    if (
+      first.singleCharacter &&
+      body[index] === '-' &&
+      body[index + 1] !== ']'
+    ) {
+      const last = simpleClassToken(body, index + 1);
+      if (last === null || !last.singleCharacter) {
+        return null;
+      }
+      const start = [...first.characters][0].charCodeAt(0);
+      const end = [...last.characters][0].charCodeAt(0);
+      if (start > end) {
+        return null;
+      }
+      for (let code = start; code <= end; code += 1) {
+        characters.add(String.fromCharCode(code));
+      }
+      index = last.nextIndex;
+    } else {
+      for (const character of first.characters) {
+        characters.add(character);
+      }
+    }
+    hasContent = true;
+  }
+  return null;
+}
+
+function parseSimpleRegexAtoms(body) {
+  const atoms = [];
+  let index = 0;
+
+  while (index < body.length) {
+    let atom;
+    if (body[index] === '[') {
+      atom = parseSimpleAsciiClass(body, index);
+      if (atom === null) {
+        return null;
+      }
+    } else if (body[index] === '\\') {
+      atom = simpleEscapedAtom(body, index);
+      if (atom === null) {
+        return null;
+      }
+    } else {
+      const character = body[index];
+      if (
+        character === undefined ||
+        character === '(' ||
+        character === ')' ||
+        character === '|' ||
+        character === '^' ||
+        character === '$' ||
+        character === '.' ||
+        character === '*' ||
+        character === '+' ||
+        character === '?' ||
+        character === '{' ||
+        character === '}' ||
+        character === ']' ||
+        character.charCodeAt(0) > 127
+      ) {
+        return null;
+      }
+      atom = { nextIndex: index + 1, characters: asciiSet(character) };
+    }
+
+    index = atom.nextIndex;
+    let minimum = 1;
+    let maximum = 1;
+    if (body[index] === '?') {
+      minimum = 0;
+      maximum = 1;
+      index += 1;
+    } else if (body[index] === '{') {
+      const end = body.indexOf('}', index + 1);
+      if (end === -1) {
+        return null;
+      }
+      const quantifier = /^([0-9]+)(?:,([0-9]+))?$/.exec(
+        body.slice(index + 1, end)
+      );
+      if (quantifier === null) {
+        return null;
+      }
+      minimum = Number(quantifier[1]);
+      maximum = quantifier[2] === undefined
+        ? minimum
+        : Number(quantifier[2]);
+      index = end + 1;
+    }
+    atoms.push({
+      characters: atom.characters,
+      minimum,
+      maximum,
+      nullable: minimum === 0,
+      variable: minimum !== maximum
+    });
+  }
+  return atoms;
+}
+
+function characterSetsOverlap(left, right) {
+  for (const character of left) {
+    if (right.has(character)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function hasSafeSimpleRegexBudget(pattern, flags) {
+  if (flags.includes('i')) {
+    return false;
+  }
+  const atoms = parseSimpleRegexAtoms(pattern.slice(1, -1));
+  if (atoms === null) {
+    return false;
+  }
+
+  for (let left = 0; left < atoms.length; left += 1) {
+    if (!atoms[left].variable) {
+      continue;
+    }
+    for (let right = left + 1; right < atoms.length; right += 1) {
+      if (
+        !atoms[right].variable ||
+        !characterSetsOverlap(atoms[left].characters, atoms[right].characters)
+      ) {
+        continue;
+      }
+
+      const hasMandatoryDisjointSeparator = atoms
+        .slice(left + 1, right)
+        .some(atom =>
+          !atom.nullable &&
+          !characterSetsOverlap(atom.characters, atoms[left].characters) &&
+          !characterSetsOverlap(atom.characters, atoms[right].characters));
+      if (!hasMandatoryDisjointSeparator) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function validateSafeRegexPattern(pattern, flags = '') {
   const normalized = normalizeString(pattern, 'rule.match.pattern');
   if (normalized.length > REGEX_MAX_PATTERN_LENGTH) {
     throw new Error(
@@ -296,6 +503,7 @@ function validateSafeRegexPattern(pattern) {
   }
 
   const body = normalized.slice(1, -1);
+  const relaxSimpleBudget = hasSafeSimpleRegexBudget(normalized, flags);
   // One frame per open group. `current` is the product of the factors seen so
   // far in the active alternation branch; `alternatives` accumulates the cost of
   // completed branches. A group's cost is alternatives + current, which is
@@ -304,6 +512,9 @@ function validateSafeRegexPattern(pattern) {
   // a{0,100}a{0,100}.
   const budgetFrames = [{ alternatives: 0, current: 1 }];
   const multiplyBudget = factor => {
+    if (relaxSimpleBudget) {
+      return;
+    }
     const frame = budgetFrames.at(-1);
     frame.current *= factor;
     // Every factor is >= 1 and enclosing frames only ever multiply, so a frame
@@ -497,8 +708,8 @@ function validateSafeRegexPattern(pattern) {
 }
 
 function compileSafeRegex(pattern, flags) {
-  const normalizedPattern = validateSafeRegexPattern(pattern);
   const normalizedFlags = normalizedRegexFlags(flags);
+  const normalizedPattern = validateSafeRegexPattern(pattern, normalizedFlags);
   try {
     return new RegExp(normalizedPattern, normalizedFlags);
   } catch (error) {

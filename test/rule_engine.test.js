@@ -459,25 +459,52 @@ test('regex_anchored rejects patterns exceeding the backtracking budget', () => 
   }
 });
 
-test('regex_anchored documents conservative budget false positives', () => {
+test('regex_anchored relaxes only provably disjoint simple quantifiers', () => {
   const conversation = makeConversation([message(0, 'customer', 'x')]);
-  const safeLooking = [
+  const accepted = [
     '^[0-9]{0,10}-[0-9]{0,10}-[0-9]{0,10}$',
     '^[0-9]{0,20}[a-z]{0,20}[A-Z]{0,20}$',
-    '^a?b?c?d?e?f?g?h?i?j?$'
+    '^a?b?c?d?e?f?g?h?i?j?$',
+    '^[0-9]{0,30}[a-z]{0,30}[A-Z]{0,30}$',
+    '^[0-9]{0,100}-[0-9]{0,100}$',
+    '^a{0,100}b{1}a{0,100}$',
+    '^[a-z]{0,50}[A-Z]{0,50}$'
+  ];
+  const rejected = [
+    '^a{0,100}a{0,100}$',
+    '^a{0,100}a{0,100}a{0,100}$',
+    '^a{0,100}b?a{0,100}$',
+    '^a{0,100}b{0,1}a{0,100}$',
+    '^[0-9]{0,60}[a-z]?[0-9]{0,60}$',
+    '^[0-9]{0,50}\\d{0,50}$',
+    '^[a-z]{0,50}[a-c]{0,50}$',
+    '^(?:a{0,100})a{0,100}$'
   ];
 
-  // These quantifiers operate on disjoint atoms, but the current conservative
-  // budget intentionally rejects them until a separate ambiguity analysis is
-  // designed and reviewed. Naive adjacency-only analysis is unsafe: nullable
-  // closure can reconnect separated atoms, as in a{0,100}b?a{0,100}.
-  for (const pattern of safeLooking) {
-    assert.throws(
-      () => evaluateRule(makeRule('budget_false_positive', 'regex_anchored', { pattern }), conversation),
-      /backtracking budget/,
-      `expected current conservative rejection for ${pattern}`
+  for (const pattern of accepted) {
+    assert.doesNotThrow(
+      () => evaluateRule(makeRule('simple_safe', 'regex_anchored', { pattern }), conversation),
+      `expected simple disjoint pattern to pass: ${pattern}`
     );
   }
+  for (const pattern of rejected) {
+    assert.throws(
+      () => evaluateRule(makeRule('simple_unsafe', 'regex_anchored', { pattern }), conversation),
+      /backtracking budget|group/,
+      `expected ambiguous or unsupported pattern to remain rejected: ${pattern}`
+    );
+  }
+
+  assert.throws(
+    () => evaluateRule(
+      makeRule('case_fold_overlap', 'regex_anchored', {
+        pattern: '^[a-z]{0,50}[A-Z]{0,50}$',
+        flags: 'i'
+      }),
+      conversation
+    ),
+    /backtracking budget/
+  );
 });
 
 test('regex_anchored still accepts realistic patterns within the budget', () => {
