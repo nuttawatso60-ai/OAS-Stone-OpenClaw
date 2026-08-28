@@ -6,12 +6,20 @@ const {
   TelegramConfigError,
   claireReply,
   createClaireTelegramBot,
-  createTelegramClient
+  createTelegramClient,
+  parseAllowedChatIds
 } = require('../tools/telegram_claire');
 
 test('Telegram client requires a bot token', () => {
   assert.throws(() => createTelegramClient({ token: '' }), TelegramConfigError);
   assert.throws(() => createTelegramClient({}), TelegramConfigError);
+});
+
+test('Telegram allowed chat IDs fail closed when missing or malformed', () => {
+  assert.throws(() => parseAllowedChatIds(''), TelegramConfigError);
+  assert.throws(() => parseAllowedChatIds(), TelegramConfigError);
+  assert.throws(() => parseAllowedChatIds('123,abc'), TelegramConfigError);
+  assert.deepEqual([...parseAllowedChatIds('123, -456,123')].sort(), ['-456', '123']);
 });
 
 test('Telegram client sends JSON requests and returns result', async () => {
@@ -60,50 +68,42 @@ test('Telegram errors do not expose token or upstream description', async () => 
   );
 });
 
-test('Claire replies to start/help with onboarding text', () => {
-  assert.match(claireReply('/start'), /Claire/);
-  assert.match(claireReply('/start'), /ขนาด/);
+test('staff assistant replies to start/help with internal-tool text', () => {
+  assert.match(claireReply('/start'), /Staff Assistant/);
+  assert.match(claireReply('/start'), /ภายใน/);
   assert.equal(claireReply('/help'), claireReply('/start'));
 });
 
-test('bot advances offset, replies to text, and ignores non-text messages', async () => {
+test('bot replies only to allowed chats and stays silent for outsiders', async () => {
   const sent = [];
-  const calls = [];
-  const batches = [
-    [
-      { update_id: 10, message: { chat: { id: 99 }, text: '/start' } },
-      { update_id: 11, message: { chat: { id: 99 }, photo: [{ file_id: 'x' }] } },
-      { update_id: 12, edited_message: { chat: { id: 99 }, text: 'ignore' } }
-    ],
-    []
-  ];
+  const batches = [[
+    { update_id: 10, message: { chat: { id: 99 }, text: '/start' } },
+    { update_id: 11, message: { chat: { id: 100 }, text: '/start' } },
+    { update_id: 12, message: { chat: { id: 99 }, photo: [{ file_id: 'x' }] } }
+  ]];
   const client = {
-    async getUpdates(options) {
-      calls.push(options);
-      return batches.shift();
-    },
-    async sendMessage(chatId, text) {
-      sent.push({ chatId, text });
-    }
+    async getUpdates() { return batches.shift(); },
+    async sendMessage(chatId, text) { sent.push({ chatId, text }); }
   };
 
-  const bot = createClaireTelegramBot({ client });
-  const first = await bot.pollOnce({ timeout: 5 });
-  const second = await bot.pollOnce({ timeout: 5 });
+  const bot = createClaireTelegramBot({ client, allowedChatIds: new Set(['99']) });
+  const result = await bot.pollOnce({ timeout: 5 });
 
-  assert.deepEqual(first, { processed: 3, nextOffset: 13 });
-  assert.deepEqual(second, { processed: 0, nextOffset: 13 });
-  assert.deepEqual(calls, [
-    { offset: undefined, timeout: 5 },
-    { offset: 13, timeout: 5 }
-  ]);
+  assert.deepEqual(result, { processed: 3, nextOffset: 13 });
   assert.equal(sent.length, 1);
   assert.equal(sent[0].chatId, 99);
-  assert.match(sent[0].text, /Claire/);
+  assert.match(sent[0].text, /Staff Assistant/);
+});
+
+test('bot requires a non-empty allowlist', () => {
+  const client = { async getUpdates() { return []; }, async sendMessage() {} };
+  assert.throws(() => createClaireTelegramBot({ client }), TelegramConfigError);
+  assert.throws(() => createClaireTelegramBot({ client, allowedChatIds: new Set() }), TelegramConfigError);
 });
 
 test('bot rejects malformed getUpdates results', async () => {
   const bot = createClaireTelegramBot({
+    allowedChatIds: new Set(['99']),
     client: {
       async getUpdates() { return {}; },
       async sendMessage() {}
