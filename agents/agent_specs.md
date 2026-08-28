@@ -86,11 +86,15 @@ OPS     →  สรุปรายการ / ราคารวม
 
 ---
 
-## TODO สำหรับ v0.2
+## v0.2 ที่ทำเสร็จแล้ว
 
-- [ ] เพิ่ม job_id auto-increment
-- [ ] บันทึกลง SQLite (`jobs.db`)
-- [ ] เพิ่ม status tracking
+- [x] เพิ่ม `job_id` auto-increment และ persistence ใน SQLite (`data/jobs.db`)
+- [x] เพิ่ม status tracking ตามลำดับ รอผลิต → กำลังผลิต → เสร็จแล้ว → ส่งแล้ว
+- [x] เพิ่ม API `POST /api/jobs`, `GET /api/jobs`, `GET /api/jobs/:jobId` และ `PATCH /api/jobs/:jobId/status`
+- [x] เก็บ pricing snapshot และยอดเงินเป็น satang ณ เวลาสร้าง job
+
+## TODO สำหรับเฟสถัดไป
+
 - [ ] เชื่อม Telegram bot (Claire)
 - [ ] เชื่อม Facebook Messenger (Claire)
 - [ ] เพิ่ม image input (ภาพตัวอย่างป้าย)
