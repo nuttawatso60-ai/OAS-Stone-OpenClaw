@@ -1,3 +1,5 @@
+const { buildDailyDigest, loadCompetitorRegistry } = require('./market_intelligence');
+
 class TelegramConfigError extends Error {
   constructor(message) {
     super(message);
@@ -63,12 +65,20 @@ function createTelegramClient({ token, fetchImpl = globalThis.fetch } = {}) {
   };
 }
 
-function claireReply(text) {
+function defaultMarketDigest() {
+  return buildDailyDigest({ registry: loadCompetitorRegistry(), observations: [] });
+}
+
+function claireReply(text, { marketDigest = defaultMarketDigest } = {}) {
   const normalized = typeof text === 'string' ? text.trim() : '';
+  if (normalized === '/market') {
+    return marketDigest();
+  }
   if (normalized === '/start' || normalized === '/help') {
     return [
       'สวัสดีค่ะ Claire จาก อ.เอ.เอส แกะสลัก',
       'ส่งรายละเอียดงานป้ายมาได้เลย โดยระบุ ขนาด, ชนิดหิน, ข้อความที่ต้องการแกะ และจำนวน',
+      'คำสั่งภายในร้าน: /market ดูสรุปตลาดและคู่แข่ง',
       'ตอนนี้ช่องทาง Telegram อยู่ในขั้นเชื่อมต่อระบบรับงาน จึงยังไม่บันทึกคำสั่งซื้ออัตโนมัติ'
     ].join('\n');
   }
@@ -80,7 +90,7 @@ function claireReply(text) {
   ].join('\n');
 }
 
-function createClaireTelegramBot({ client } = {}) {
+function createClaireTelegramBot({ client, marketDigest = defaultMarketDigest } = {}) {
   if (!client || typeof client.getUpdates !== 'function' || typeof client.sendMessage !== 'function') {
     throw new TelegramConfigError('Telegram client is required');
   }
@@ -100,7 +110,7 @@ function createClaireTelegramBot({ client } = {}) {
 
       const message = update?.message;
       if (!message || typeof message.text !== 'string' || message.chat?.id === undefined) continue;
-      await client.sendMessage(message.chat.id, claireReply(message.text));
+      await client.sendMessage(message.chat.id, claireReply(message.text, { marketDigest }));
     }
 
     return { processed: updates.length, nextOffset };
@@ -119,5 +129,6 @@ module.exports = {
   TelegramConfigError,
   claireReply,
   createClaireTelegramBot,
-  createTelegramClient
+  createTelegramClient,
+  defaultMarketDigest
 };
