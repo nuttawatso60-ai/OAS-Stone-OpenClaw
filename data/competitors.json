@@ -44,10 +44,12 @@
     },
     {
       "id": "pai-hin-kae-salak-kasetwisai",
-      "name": "ป้ายหินแกะสลัก เกษตรวิสัย",
+      "name": "ป้ายหินแกะสลัก",
       "province": "Roi Et",
-      "verificationStatus": "pending_verification",
-      "sourceUrls": []
+      "verificationStatus": "verified",
+      "sourceUrls": [
+        "https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI"
+      ]
     }
   ]
 }

@@ -103,7 +103,11 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
     assert.equal(competitorsById.get(id).province, 'Roi Et');
   }
 
-  for (const id of ['phlanchai-pai-hin', 'ran-fa-tak']) {
+  for (const id of [
+    'phlanchai-pai-hin',
+    'ran-fa-tak',
+    'pai-hin-kae-salak-kasetwisai'
+  ]) {
     assert.equal(competitorsById.get(id).verificationStatus, 'verified');
     assert.ok(competitorsById.get(id).sourceUrls.length > 0);
   }
@@ -112,19 +116,22 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   assert.deepEqual(competitorsById.get('baan-tham-pai').sourceUrls, [
     'https://www.google.com/maps?cid=15093723125795807870'
   ]);
+  assert.equal(competitorsById.get('pai-hin-kae-salak-kasetwisai').name, 'ป้ายหินแกะสลัก');
+  assert.deepEqual(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls, [
+    'https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI'
+  ]);
   for (const sourceUrl of competitorsById.get('phlanchai-pai-hin').sourceUrls
     .concat(competitorsById.get('ran-fa-tak').sourceUrls)
-    .concat(competitorsById.get('baan-tham-pai').sourceUrls)) {
+    .concat(competitorsById.get('baan-tham-pai').sourceUrls)
+    .concat(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls)) {
     assert.ok(['http:', 'https:'].includes(new URL(sourceUrl).protocol));
   }
 
-  for (const id of [
-    'chinna-kae-salak-pai-hin',
-    'ran-phong-granite',
-    'pai-hin-kae-salak-kasetwisai'
-  ]) {
+  for (const id of ['chinna-kae-salak-pai-hin', 'ran-phong-granite']) {
     assert.equal(competitorsById.get(id).verificationStatus, 'pending_verification');
+    assert.deepEqual(competitorsById.get(id).sourceUrls, []);
   }
+  assert.equal(competitorsById.get('ran-phong-granite').name, 'ร้านผ่องแกรนิต');
 
   const observations = loadObservations();
   for (const observation of observations) {
@@ -137,6 +144,13 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   assert.match(baanThamPaiObservation.summary, /ร้านบ้านทำป้ายแกะสลัก/);
   assert.match(baanThamPaiObservation.summary, /บ้านสันติภาพ 119 ตำบล รอบเมือง อำเภอเมืองร้อยเอ็ด 45000/);
   assert.equal(baanThamPaiObservation.sourceUrl, 'https://www.google.com/maps?cid=15093723125795807870');
+  const kasetWisaiObservation = observations.find(observation => observation.competitorId === 'pai-hin-kae-salak-kasetwisai');
+  assert.ok(kasetWisaiObservation);
+  assert.match(kasetWisaiObservation.summary, /ป้ายหินแกะสลัก/);
+  assert.match(kasetWisaiObservation.summary, /MH4P\+GRV ตำบล เกษตรวิสัย อำเภอ เกษตรวิสัย ร้อยเอ็ด 45150/);
+  assert.equal(kasetWisaiObservation.sourceUrl, competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls[0]);
+  assert.equal(observations.some(observation => observation.competitorId === 'chinna-kae-salak-pai-hin'), false);
+  assert.equal(observations.some(observation => observation.competitorId === 'ran-phong-granite'), false);
   assert.ok(observations.some(observation => observation.competitorId === 'phlanchai-pai-hin'));
   assert.ok(observations.some(observation => observation.competitorId === 'ran-fa-tak'));
 });
