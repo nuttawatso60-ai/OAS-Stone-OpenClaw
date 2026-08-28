@@ -545,7 +545,7 @@ function nextCodePoint(value, index) {
 // numeric character, which preserves range captures such as "100-200 บาท"
 // while preventing signed numbers from yielding an unsigned fragment.
 const NUMERIC_LEFT_BOUNDARY = /[0-9.,]/;
-const NUMERIC_MINUS = /[-−]/;
+const NUMERIC_MINUS = /[\u002D\u2212\u2010\u2011\u2012\u2013\u2014\uFE63\uFF0D]/u;
 const NUMERIC_EMBEDDED_LEFT_BOUNDARY = /[A-Za-z0-9_]/;
 const NUMERIC_RIGHT_BOUNDARY = /[\p{L}\p{N}\p{M}_]/u;
 

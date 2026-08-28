@@ -459,6 +459,26 @@ test('regex_anchored rejects patterns exceeding the backtracking budget', () => 
   }
 });
 
+test('regex_anchored documents conservative budget false positives', () => {
+  const conversation = makeConversation([message(0, 'customer', 'x')]);
+  const safeLooking = [
+    '^[0-9]{0,10}-[0-9]{0,10}-[0-9]{0,10}$',
+    '^[0-9]{0,20}[a-z]{0,20}[A-Z]{0,20}$',
+    '^a?b?c?d?e?f?g?h?i?j?$'
+  ];
+
+  // These quantifiers operate on disjoint atoms, but the current conservative
+  // budget intentionally rejects them until a separate ambiguity analysis is
+  // designed and reviewed.
+  for (const pattern of safeLooking) {
+    assert.throws(
+      () => evaluateRule(makeRule('budget_false_positive', 'regex_anchored', { pattern }), conversation),
+      /backtracking budget/,
+      `expected current conservative rejection for ${pattern}`
+    );
+  }
+});
+
 test('regex_anchored still accepts realistic patterns within the budget', () => {
   const conversation = makeConversation([message(0, 'customer', 'ราคา 123')]);
   const allowed = [
@@ -679,6 +699,42 @@ test('numeric_pattern rejects signed and embedded numeric fragments', () => {
     ).map(entry => entry.captures.number),
     ['100', '200']
   );
+});
+
+test('numeric_pattern rejects common Unicode dash signed fragments', () => {
+  const rule = makeRule('unicode_dash_boundaries', 'numeric_pattern', {
+    number_pattern: 'integer',
+    units: ['บาท']
+  });
+  const dashes = [
+    ['U+002D HYPHEN-MINUS', '\u002D'],
+    ['U+2212 MINUS SIGN', '\u2212'],
+    ['U+2010 HYPHEN', '\u2010'],
+    ['U+2011 NON-BREAKING HYPHEN', '\u2011'],
+    ['U+2012 FIGURE DASH', '\u2012'],
+    ['U+2013 EN DASH', '\u2013'],
+    ['U+2014 EM DASH', '\u2014'],
+    ['U+FE63 SMALL HYPHEN-MINUS', '\uFE63'],
+    ['U+FF0D FULLWIDTH HYPHEN-MINUS', '\uFF0D']
+  ];
+
+  for (const [name, dash] of dashes) {
+    assert.deepEqual(
+      evaluateRule(rule, makeConversation([message(0, 'agent', `${dash}100 บาท`)])),
+      [],
+      `expected no signed fragment for ${name}`
+    );
+  }
+
+  // Dash separators after a numeric character remain valid range syntax.
+  for (const [, dash] of dashes) {
+    assert.deepEqual(
+      evaluateRule(rule, makeConversation([message(0, 'agent', `100${dash}200 บาท`)]))
+        .map(entry => entry.captures.number),
+      ['200'],
+      `expected range capture for ${JSON.stringify(dash)}`
+    );
+  }
 });
 
 test('numeric_pattern matches NFC-equivalent units like other rule kinds', () => {
