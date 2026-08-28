@@ -26,10 +26,12 @@
     },
     {
       "id": "ran-fa-tak",
-      "name": "ร้านฟ้าตาก",
+      "name": "ฟ้าตากแกรนิต",
       "province": "Roi Et",
-      "verificationStatus": "pending_verification",
-      "sourceUrls": []
+      "verificationStatus": "verified",
+      "sourceUrls": [
+        "https://roiet.police.go.th/pdf/uploads/%E0%B8%A1%E0%B8%B4.%E0%B8%A2.64.pdf"
+      ]
     },
     {
       "id": "ran-phong-granite",
