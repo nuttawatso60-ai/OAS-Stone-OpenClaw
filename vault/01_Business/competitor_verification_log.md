@@ -36,3 +36,4 @@
 | ชินนะ แกะสลักป้ายหิน | exact-name, Page ID, local procurement and public business search | ❌ ไม่พบ source ใหม่ที่ยืนยัน exact identity + Roi Et; keep `pending_verification` |
 | ร้านผ่องแกรนิต | exact-name, Roi Et, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; keep `pending_verification` |
 | บ้านทำป้าย | exact coordinates `16.0356508,103.6562492`, Google/Maps-style and address-linked search | Google Street View lead at 16.0356508,103.6562492 is geographically consistent with Rop Mueang, Roi Et; business identity still requires independent public linkage. |
+| บ้านทำป้าย — Kalasin lead | Google Maps/Street View, `16.4267193,103.5183828` | location confirmed as ต.เหนือ อ.เมืองกาฬสินธุ์ จ.กาฬสินธุ์; business-name/brand linkage still requires public verification |
