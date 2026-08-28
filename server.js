@@ -3,13 +3,15 @@ const path = require('path');
 const fs = require('fs');
 const { calculateJobPrice } = require('./tools/pricing_engine');
 const {
-  createJobStore,
+  createJobStore
+} = require('./tools/job_store');
+const {
   InvalidTransitionError,
   JobNotFoundError,
   PersistenceError,
   UnknownStatusError,
   ValidationError
-} = require('./tools/job_store');
+} = require('./tools/job_errors');
 
 const PORT = Number(process.env.PORT) || 3000;
 const RULES_PATH = path.join(__dirname, 'data', 'pricing_rules.json');
@@ -158,6 +160,39 @@ function createApp({ jobStore } = {}) {
     }
   });
 
+  app.get('/api/ops/summary', (req, res) => {
+    try {
+      return res.json(getJobStore().reports.getStatusCounts());
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
+  app.get('/api/ops/queue', (req, res) => {
+    try {
+      const status = req.query.status;
+      return res.json(getJobStore().reports.listQueue(status === undefined ? {} : { status }));
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
+  app.get('/api/ops/reports/daily', (req, res) => {
+    try {
+      return res.json(getJobStore().reports.getDailyReport({ date: req.query.date }));
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
+  app.get('/api/ops/reports/weekly', (req, res) => {
+    try {
+      return res.json(getJobStore().reports.getWeeklyReport({ weekStart: req.query.weekStart }));
+    } catch (error) {
+      return jobErrorResponse(error, res);
+    }
+  });
+
   app.use((error, req, res, next) => {
     if (error instanceof SyntaxError && Object.hasOwn(error, 'body')) {
       return res.status(400).json({ error: 'Invalid JSON request body' });
@@ -172,7 +207,7 @@ function createApp({ jobStore } = {}) {
 const app = createApp();
 
 if (require.main === module) {
-  app.listen(PORT, () => {
+  app.listen(PORT, '127.0.0.1', () => {
     console.log(`OAS quotation app: http://localhost:${PORT}`);
   });
 }

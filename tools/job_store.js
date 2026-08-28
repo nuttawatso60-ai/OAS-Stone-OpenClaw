@@ -3,6 +3,14 @@
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
 const { assertNoSymlink } = require('../scripts/lib/extraction/path_safety');
+const { createJobReports } = require('./job_reports');
+const {
+  ValidationError,
+  UnknownStatusError,
+  JobNotFoundError,
+  InvalidTransitionError,
+  PersistenceError
+} = require('./job_errors');
 
 const SUPPORTED_SCHEMA_VERSION = 1;
 const STATUSES = Object.freeze(['รอผลิต', 'กำลังผลิต', 'เสร็จแล้ว', 'ส่งแล้ว']);
@@ -11,13 +19,6 @@ const STATUS_TRANSITIONS = Object.freeze({
   'กำลังผลิต': 'เสร็จแล้ว',
   'เสร็จแล้ว': 'ส่งแล้ว'
 });
-
-class JobStoreError extends Error {}
-class ValidationError extends JobStoreError {}
-class UnknownStatusError extends JobStoreError {}
-class JobNotFoundError extends JobStoreError {}
-class InvalidTransitionError extends JobStoreError {}
-class PersistenceError extends JobStoreError {}
 
 function normalizeStatus(value) {
   if (typeof value !== 'string') {
@@ -144,9 +145,23 @@ function wrapPersistence(operation) {
   try {
     return operation();
   } catch (error) {
-    if (error instanceof JobStoreError) throw error;
+    if (error instanceof ValidationError ||
+        error instanceof UnknownStatusError ||
+        error instanceof JobNotFoundError ||
+        error instanceof InvalidTransitionError ||
+        error instanceof PersistenceError) {
+      throw error;
+    }
     throw new PersistenceError('job persistence failed');
   }
+}
+
+function isJobStoreError(error) {
+  return error instanceof ValidationError ||
+    error instanceof UnknownStatusError ||
+    error instanceof JobNotFoundError ||
+    error instanceof InvalidTransitionError ||
+    error instanceof PersistenceError;
 }
 
 function createJobStore({ dbPath } = {}) {
@@ -183,7 +198,7 @@ function createJobStore({ dbPath } = {}) {
     } catch {
       // Preserve the original initialization failure.
     }
-    if (error instanceof JobStoreError) throw error;
+    if (isJobStoreError(error)) throw error;
     throw new PersistenceError('job database could not be opened');
   }
 
@@ -194,6 +209,8 @@ function createJobStore({ dbPath } = {}) {
   };
 
   return {
+    reports: createJobReports({ db }),
+
     createJob({ customer, job, result, quoteNumber } = {}) {
       return withOpenDb(() => {
         const customerName = requireText(customer?.name, 'customer.name');
@@ -286,7 +303,6 @@ function createJobStore({ dbPath } = {}) {
 }
 
 module.exports = {
-  STATUS_TRANSITIONS,
   STATUSES,
   createJobStore,
   ValidationError,
