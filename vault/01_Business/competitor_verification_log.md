@@ -32,9 +32,9 @@
 
 | คู่แข่ง | source type ใหม่ | ผล |
 |---|---|---|
-| ป้ายหินแกะสลัก เกษตรวิสัย | exact-name, `MH4P+GRV`, Google/Maps-style, directory and local-government search | ⚠️ พบ location/business lead แต่ผลใหม่เป็นข้อมูลทั่วไป/ธุรกิจอื่น; ไม่พบ stable public URL ที่ผูก exact identity กับเกษตรวิสัย/ร้อยเอ็ด; keep `pending_verification` |
-| ชินนะ แกะสลักป้ายหิน | exact-name, Page ID, Google/Maps-style, local procurement and public business search | ❌ ไม่พบ source ใหม่ที่ยืนยัน exact identity + Roi Et; keep `pending_verification` |
-| ร้านผ่องแกรนิต | exact-name, Roi Et, Google/Maps-style, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; keep `pending_verification` |
+| ป้ายหินแกะสลัก เกษตรวิสัย | exact Place ID `ChIJqwW3GwCLFzERhWbYlIWQjiI`, `MH4P+GRV`, Google/Maps-style, directory and local-government search | ⚠️ ไม่พบ stable public place URL หรือผลที่ผูก exact identity กับเกษตรวิสัย/ร้อยเอ็ด; ผล postcode/general หรือธุรกิจอื่นไม่พอ; keep `pending_verification` |
+| ชินนะ แกะสลักป้ายหิน | exact-name, Page ID, Google/Maps-style, local procurement and public business search | ❌ ไม่พบ source ใหม่ที่ยืนยัน exact identity + Roi Et; ผลที่พบเป็นธุรกิจ/บริการอื่น; keep `pending_verification` |
+| ร้านผ่องแกรนิต | exact-name, Roi Et, Google/Maps-style, procurement and public business search | ❌ ไม่พบ exact attributable source ใหม่; ผลที่พบไม่ใช่ชื่อ exact; keep `pending_verification` |
 | บ้านทำป้าย | exact coordinates `16.0356508,103.6562492`, Google/Maps-style and address-linked search | Google Street View lead at 16.0356508,103.6562492 is geographically consistent with Rop Mueang, Roi Et; business identity still requires independent public linkage. |
 | บ้านทำป้าย — Kalasin lead | Google Maps/Street View, `16.4267193,103.5183828` | location confirmed as ต.เหนือ อ.เมืองกาฬสินธุ์ จ.กาฬสินธุ์; business-name/brand linkage still requires public verification |
 
