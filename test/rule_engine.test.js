@@ -646,6 +646,41 @@ test('numeric_pattern never captures a fragment of a longer numeric literal', ()
   );
 });
 
+test('numeric_pattern rejects signed and embedded numeric fragments', () => {
+  const integer = makeRule('integer_boundaries', 'numeric_pattern', {
+    number_pattern: 'integer',
+    units: ['บาท']
+  });
+  const decimal = makeRule('decimal_boundaries', 'numeric_pattern', {
+    number_pattern: 'decimal',
+    units: ['บาท']
+  });
+
+  for (const [rule, text] of [
+    [integer, '-100 บาท'],
+    [decimal, '-100.50 บาท'],
+    [integer, 'ราคา −100 บาท'],
+    [integer, 'abc100 บาท'],
+    [integer, 'ref_100 บาท']
+  ]) {
+    assert.deepEqual(
+      evaluateRule(rule, makeConversation([message(0, 'agent', text)])),
+      [],
+      `expected no capture for ${text}`
+    );
+  }
+
+  // Leading/trailing punctuation and Thai text around a valid number remain
+  // valid, and multiple occurrences preserve source order.
+  assert.deepEqual(
+    evaluateRule(
+      integer,
+      makeConversation([message(0, 'agent', '(ราคา 100 บาท และ 200 บาท),')])
+    ).map(entry => entry.captures.number),
+    ['100', '200']
+  );
+});
+
 test('numeric_pattern treats configured units as literal data, not regex syntax', () => {
   const conversation = makeConversation([
     message(0, 'agent', 'ราคา 100 XX และ 200 .* และ 300 a|b')

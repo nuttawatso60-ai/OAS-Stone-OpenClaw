@@ -538,10 +538,25 @@ function nextCodePoint(value, index) {
 // A digit, comma, or period immediately before a match means the match is a
 // fragment of a longer numeric literal. Capturing it would emit a wrong value
 // rather than no value: "12.34 บาท" under `integer` would yield 34, and
-// "1,000 บาท" would yield 000. "-" is deliberately excluded so that ranges such
-// as "100-200 บาท" still capture 200; numbers are unsigned by contract.
+// "1,000 บาท" would yield 000. A minus sign is rejected unless it follows a
+// numeric character, which preserves range captures such as "100-200 บาท"
+// while preventing signed numbers from yielding an unsigned fragment.
 const NUMERIC_LEFT_BOUNDARY = /[0-9.,]/;
+const NUMERIC_MINUS = /[-−]/;
+const NUMERIC_EMBEDDED_LEFT_BOUNDARY = /[A-Za-z0-9_]/;
 const NUMERIC_RIGHT_BOUNDARY = /[\p{L}\p{N}\p{M}_]/u;
+
+function isNumericFragment(text, index) {
+  const previous = index === 0 ? '' : text[index - 1];
+  if (NUMERIC_LEFT_BOUNDARY.test(previous)) {
+    return true;
+  }
+  if (NUMERIC_MINUS.test(previous)) {
+    const beforeMinus = index < 2 ? '' : text[index - 2];
+    return !/[\p{N}]/u.test(beforeMinus);
+  }
+  return NUMERIC_EMBEDDED_LEFT_BOUNDARY.test(previous);
+}
 
 function numericMatches(text, regex) {
   const matches = [];
@@ -551,7 +566,7 @@ function numericMatches(text, regex) {
     const previous = match.index === 0 ? '' : text[match.index - 1];
     const end = match.index + match[0].length;
     const next = nextCodePoint(text, end);
-    if (NUMERIC_LEFT_BOUNDARY.test(previous) || NUMERIC_RIGHT_BOUNDARY.test(next)) {
+    if (isNumericFragment(text, match.index) || NUMERIC_RIGHT_BOUNDARY.test(next)) {
       continue;
     }
     matches.push({
