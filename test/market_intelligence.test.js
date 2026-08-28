@@ -103,17 +103,18 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
     assert.equal(competitorsById.get(id).province, 'Roi Et');
   }
 
-  const verifiedCompetitor = competitorsById.get('phlanchai-pai-hin');
-  assert.equal(verifiedCompetitor.verificationStatus, 'verified');
-  assert.ok(verifiedCompetitor.sourceUrls.length > 0);
-  for (const sourceUrl of verifiedCompetitor.sourceUrls) {
+  for (const id of ['phlanchai-pai-hin', 'ran-fa-tak']) {
+    assert.equal(competitorsById.get(id).verificationStatus, 'verified');
+    assert.ok(competitorsById.get(id).sourceUrls.length > 0);
+  }
+  for (const sourceUrl of competitorsById.get('phlanchai-pai-hin').sourceUrls
+    .concat(competitorsById.get('ran-fa-tak').sourceUrls)) {
     assert.ok(['http:', 'https:'].includes(new URL(sourceUrl).protocol));
   }
 
   for (const id of [
     'baan-tham-pai',
     'chinna-kae-salak-pai-hin',
-    'ran-fa-tak',
     'ran-phong-granite',
     'pai-hin-kae-salak-kasetwisai'
   ]) {
@@ -127,6 +128,7 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
     assert.equal(competitor.verificationStatus, 'verified');
   }
   assert.ok(observations.some(observation => observation.competitorId === 'phlanchai-pai-hin'));
+  assert.ok(observations.some(observation => observation.competitorId === 'ran-fa-tak'));
 });
 
 test('digest filters observations to the selected UTC date', () => {

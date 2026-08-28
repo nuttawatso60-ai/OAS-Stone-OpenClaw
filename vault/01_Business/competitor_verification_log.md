@@ -14,3 +14,16 @@
 | ร้านผ่องแกรนิต | 0918412349 | ❌ เจอ "ร้านผ่องใสแกรนิต" — คนละชื่อ ไม่ยืนยันร้อยเอ็ด |
 
 ผล: ไม่มี competitor upgrade, registry/observations ไม่เปลี่ยน
+
+## 2026-08-28 — public-source verification round 2
+
+| คู่แข่ง | source type ที่ค้น | ผล |
+|---|---|---|
+| ฟ้าตากแกรนิต | official Roi Et government/police report + public directory + Facebook lead | ✅ ยืนยันชื่อและที่อยู่ในจังหวัดร้อยเอ็ด; upgraded `ran-fa-tak`; official PDF เป็นแหล่ง authoritative, Facebook ยังไม่ถูกเพิ่มเป็น source |
+| ป้ายหินแกะสลัก เกษตรวิสัย | public business/search pages | ❌ ยังไม่พบ stable source ที่ยืนยัน exact identity เพียงพอ |
+| บ้านทำป้าย | new public-source search | ❌ ผลที่พบเป็นธุรกิจชื่อใกล้เคียงในนครราชสีมา ไม่ยืนยัน Roi Et |
+| ชินนะ แกะสลักป้ายหิน | exact-name public search | ❌ ไม่พบ source ที่ยืนยัน exact identity + Roi Et/service; Facebook group/profile lead ที่เคยผูกกับรายการนี้ถูกแก้ไขแล้วว่าเป็นของ `บ้านทำป้าย` สาขากาฬสินธุ์ |
+| บ้านทำป้าย | address-first public search: `บ้านทำป้ายแกะสลัก`, `119 บ้านสันติภาพ`, `ตำบลรอบเมือง` | ⚠️ Public location data confirms บ้านสันติภาพ in ต.รอบเมือง อ.เมืองร้อยเอ็ด, but no source ties the business name กับเลขที่ 119; keep `pending_verification` |
+| บ้านทำป้าย — Kalasin branch lead | [Facebook group/profile lead](https://www.facebook.com/groups/1703713003177632/user/100012742930398/) + public business search | ⚠️ User correction identifies this lead as related to บ้านทำป้าย in Kalasin; no public business-level source confirms the branch, keep as supporting intelligence only |
+| พลาญชัยป้ายหิน101 | Facebook profile/page `https://www.facebook.com/profile.php?id=61566473556055&sk=reels_tab` + exact-name public search | Facebook lead supplied: พลาญชัยป้ายหิน101; public identity/location linkage not independently confirmed yet. Existing official PEA/OIC evidence remains authoritative. |
+| ร้านผ่องแกรนิต | new public-source search | ❌ ผลที่พบเป็น `ร้านผ่องใสแกรนิต` คนละชื่อและไม่ยืนยัน Roi Et |
