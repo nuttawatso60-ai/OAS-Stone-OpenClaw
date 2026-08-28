@@ -19,6 +19,23 @@ function requiredToken(token) {
   return token.trim();
 }
 
+function parseAllowedChatIds(value) {
+  if (typeof value !== 'string' || value.trim() === '') {
+    throw new TelegramConfigError('TELEGRAM_ALLOWED_CHAT_IDS is required');
+  }
+
+  const ids = value.split(',').map(part => part.trim());
+  if (ids.some(id => !/^-?\d+$/.test(id))) {
+    throw new TelegramConfigError('TELEGRAM_ALLOWED_CHAT_IDS is invalid');
+  }
+
+  const normalized = new Set(ids.map(id => String(BigInt(id))));
+  if (normalized.size === 0) {
+    throw new TelegramConfigError('TELEGRAM_ALLOWED_CHAT_IDS is required');
+  }
+  return normalized;
+}
+
 function createTelegramClient({ token, fetchImpl = globalThis.fetch } = {}) {
   const botToken = requiredToken(token);
   if (typeof fetchImpl !== 'function') {
@@ -63,26 +80,30 @@ function createTelegramClient({ token, fetchImpl = globalThis.fetch } = {}) {
   };
 }
 
-function claireReply(text) {
+function staffReply(text) {
   const normalized = typeof text === 'string' ? text.trim() : '';
   if (normalized === '/start' || normalized === '/help') {
     return [
-      'สวัสดีค่ะ Claire จาก อ.เอ.เอส แกะสลัก',
-      'ส่งรายละเอียดงานป้ายมาได้เลย โดยระบุ ขนาด, ชนิดหิน, ข้อความที่ต้องการแกะ และจำนวน',
-      'ตอนนี้ช่องทาง Telegram อยู่ในขั้นเชื่อมต่อระบบรับงาน จึงยังไม่บันทึกคำสั่งซื้ออัตโนมัติ'
+      'OAS Stone Staff Assistant',
+      'เครื่องมือภายในสำหรับเจ้าของร้านและพนักงาน',
+      'ตอนนี้รองรับคำสั่งพื้นฐานเท่านั้น และยังไม่เปิดเผยข้อมูลราคาเชิงลึก',
+      'คำสั่งถัดไปที่จะเพิ่ม: /price /materials /sizes /train /market'
     ].join('\n');
   }
 
   return [
-    'ได้รับข้อความแล้วค่ะ',
-    'กรุณาระบุ ขนาดป้าย, ชนิดหิน, ข้อความที่ต้องการแกะ และจำนวน',
-    'Claire จะใช้ข้อมูลนี้สำหรับขั้นตอนประเมินราคาในระบบ'
+    'รับข้อความแล้ว',
+    'บอทนี้ใช้ภายในร้านสำหรับราคา ขนาด วัสดุ การฝึกพนักงาน และข้อมูลตลาด',
+    'ใช้ /help เพื่อดูคำสั่งที่รองรับ'
   ].join('\n');
 }
 
-function createClaireTelegramBot({ client } = {}) {
+function createClaireTelegramBot({ client, allowedChatIds } = {}) {
   if (!client || typeof client.getUpdates !== 'function' || typeof client.sendMessage !== 'function') {
     throw new TelegramConfigError('Telegram client is required');
+  }
+  if (!(allowedChatIds instanceof Set) || allowedChatIds.size === 0) {
+    throw new TelegramConfigError('Telegram allowed chat IDs are required');
   }
 
   let nextOffset;
@@ -100,7 +121,9 @@ function createClaireTelegramBot({ client } = {}) {
 
       const message = update?.message;
       if (!message || typeof message.text !== 'string' || message.chat?.id === undefined) continue;
-      await client.sendMessage(message.chat.id, claireReply(message.text));
+      const chatId = String(message.chat.id);
+      if (!allowedChatIds.has(chatId)) continue;
+      await client.sendMessage(message.chat.id, staffReply(message.text));
     }
 
     return { processed: updates.length, nextOffset };
@@ -117,7 +140,9 @@ function createClaireTelegramBot({ client } = {}) {
 module.exports = {
   TelegramApiError,
   TelegramConfigError,
-  claireReply,
+  claireReply: staffReply,
+  staffReply,
+  parseAllowedChatIds,
   createClaireTelegramBot,
   createTelegramClient
 };
