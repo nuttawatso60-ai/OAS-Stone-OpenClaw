@@ -87,6 +87,48 @@ test('pending competitors are listed by name but cannot produce verified observa
   }), MarketDataError);
 });
 
+test('Roi Et registry keeps only sufficiently evidenced competitors verified', () => {
+  const registry = loadCompetitorRegistry();
+  const competitorsById = new Map(registry.competitors.map(competitor => [competitor.id, competitor]));
+  const knownRoiEtIds = [
+    'baan-tham-pai',
+    'phlanchai-pai-hin',
+    'chinna-kae-salak-pai-hin',
+    'ran-fa-tak',
+    'ran-phong-granite',
+    'pai-hin-kae-salak-kasetwisai'
+  ];
+  for (const id of knownRoiEtIds) {
+    assert.ok(competitorsById.has(id), `missing known competitor: ${id}`);
+    assert.equal(competitorsById.get(id).province, 'Roi Et');
+  }
+
+  const verifiedCompetitor = competitorsById.get('phlanchai-pai-hin');
+  assert.equal(verifiedCompetitor.verificationStatus, 'verified');
+  assert.ok(verifiedCompetitor.sourceUrls.length > 0);
+  for (const sourceUrl of verifiedCompetitor.sourceUrls) {
+    assert.ok(['http:', 'https:'].includes(new URL(sourceUrl).protocol));
+  }
+
+  for (const id of [
+    'baan-tham-pai',
+    'chinna-kae-salak-pai-hin',
+    'ran-fa-tak',
+    'ran-phong-granite',
+    'pai-hin-kae-salak-kasetwisai'
+  ]) {
+    assert.equal(competitorsById.get(id).verificationStatus, 'pending_verification');
+  }
+
+  const observations = loadObservations();
+  for (const observation of observations) {
+    const competitor = competitorsById.get(observation.competitorId);
+    assert.ok(competitor, `observation references unknown competitor: ${observation.competitorId}`);
+    assert.equal(competitor.verificationStatus, 'verified');
+  }
+  assert.ok(observations.some(observation => observation.competitorId === 'phlanchai-pai-hin'));
+});
+
 test('digest filters observations to the selected UTC date', () => {
   const registry = {
     version: 1,
