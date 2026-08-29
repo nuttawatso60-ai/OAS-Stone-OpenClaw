@@ -1,4 +1,10 @@
-const { StaffPricingInputError, commandName, quoteStaffPrice } = require('./staff_pricing');
+const {
+  StaffPricingInputError,
+  commandName,
+  parsePriceCommand,
+  quoteStaffPrice
+} = require('./staff_pricing');
+const { planCustomerResponse, RESPONSE_STATES } = require('./customer_response_planner');
 const {
   StaffKnowledgeError,
   formatMaterials,
@@ -20,6 +26,13 @@ class TelegramApiError extends Error {
   constructor(message) {
     super(message);
     this.name = 'TelegramApiError';
+  }
+}
+
+class StaffResponseDraftInputError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'StaffResponseDraftInputError';
   }
 }
 
@@ -91,6 +104,94 @@ function createTelegramClient({ token, fetchImpl = globalThis.fetch } = {}) {
   };
 }
 
+function parseDraftCommand(text) {
+  if (typeof text !== 'string') throw new StaffResponseDraftInputError('รูปแบบคำสั่งไม่ถูกต้อง');
+  const parts = text.trim().split(/\s+/);
+  if (commandName(parts[0]) !== '/draft') {
+    throw new StaffResponseDraftInputError('ต้องเริ่มด้วย /draft');
+  }
+  if (parts.length < 4 || parts.length > 5) {
+    throw new StaffResponseDraftInputError('ใช้: /draft <ประเภทงาน> <วัสดุ> <กว้างxสูง> [จำนวน]');
+  }
+  if (!/^[a-z][a-z0-9_-]*$/i.test(parts[1])) {
+    throw new StaffResponseDraftInputError('ประเภทงานต้องเป็นรหัสภาษาอังกฤษ เช่น stone_sign');
+  }
+
+  let priceInput;
+  try {
+    priceInput = parsePriceCommand(`/price ${parts.slice(2).join(' ')}`);
+  } catch (error) {
+    if (error instanceof StaffPricingInputError) {
+      throw new StaffResponseDraftInputError(error.message);
+    }
+    throw error;
+  }
+  return {
+    productType: parts[1],
+    material: priceInput.material,
+    width: priceInput.widthCm,
+    height: priceInput.heightCm,
+    unit: 'cm',
+    quantity: priceInput.quantity
+  };
+}
+
+function formatMoney(value) {
+  return new Intl.NumberFormat('th-TH', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+function formatCustomerResponseDraft(text, { planner = planCustomerResponse } = {}) {
+  if (typeof planner !== 'function') throw new StaffResponseDraftInputError('planner is unavailable');
+  const request = parseDraftCommand(text);
+  const plan = planner(request);
+  if (!plan || !RESPONSE_STATES.includes(plan.state)) {
+    throw new StaffResponseDraftInputError('ผลลัพธ์ planner ไม่ถูกต้อง');
+  }
+
+  const lines = [
+    'OAS Customer Response Draft Plan',
+    `สถานะ: ${plan.state}`,
+    'โหมด: draft-only สำหรับ staff review; ไม่ใช่การส่งข้อความให้ลูกค้า'
+  ];
+
+  if (plan.state === 'needs_information') {
+    lines.push('ยังไม่ใช่คำตอบสุดท้ายสำหรับลูกค้า', 'ต้องถามเพิ่ม:');
+    for (const item of plan.missingInformation ?? []) lines.push(`- ${item.question}`);
+  } else if (plan.state === 'unsupported') {
+    lines.push('ไม่สามารถจัดทำ draft plan ได้');
+    if (Array.isArray(plan.errors) && plan.errors.length > 0) lines.push(`เหตุผล: ${plan.errors.join(', ')}`);
+  } else {
+    const current = plan.pricing?.current;
+    if (current && Number.isFinite(current.total)) {
+      lines.push(`ราคาปัจจุบันจาก Pricing Engine: ${formatMoney(current.total)} ${current.currency ?? 'THB'}`);
+    }
+    if (plan.state === 'conflict') {
+      lines.push('ยังไม่ใช่คำตอบสุดท้ายสำหรับลูกค้า', 'ข้อขัดแย้งด้านราคา:');
+      for (const conflict of plan.conflicts ?? []) {
+        lines.push(`- ${conflict.conflictType ?? 'pricing_conflict'}: unresolved`);
+      }
+    } else {
+      lines.push('พร้อมเป็น draft ให้ staff ตรวจทานก่อนตอบลูกค้า');
+    }
+  }
+
+  const historical = plan.pricing?.historical ?? [];
+  if (historical.length > 0) {
+    lines.push('Historical quotation (ข้อมูลประกอบเท่านั้น):');
+    for (const item of historical) {
+      if (Number.isFinite(item.quotedPriceThb)) lines.push(`- ${formatMoney(item.quotedPriceThb)} THB; ไม่ override Pricing Engine`);
+    }
+  }
+  const guidance = (plan.responseStyle ?? []).map(item => item.guidance).filter(Boolean);
+  if (guidance.length > 0) lines.push('แนวทาง response style:', ...guidance.map(item => `- ${item}`));
+  const pointers = (plan.evidencePointers ?? []).map(item => item.chunk_id).filter(Boolean);
+  if (pointers.length > 0) lines.push(`Evidence pointers: ${[...new Set(pointers)].join(', ')}`);
+  return lines.join('\n');
+}
+
 function staffReply(text) {
   const normalized = typeof text === 'string' ? text.trim() : '';
   // Group and supergroup clients send "/help@botusername", so dispatch on the
@@ -102,6 +203,7 @@ function staffReply(text) {
       'เครื่องมือภายในสำหรับเจ้าของร้านและพนักงาน',
       'คำสั่งที่ใช้ได้:',
       '/price <วัสดุ> <กว้างxสูง> [จำนวน]',
+      '/draft <ประเภทงาน> <วัสดุ> <กว้างxสูง> [จำนวน]',
       '/materials, /sizes, /train, /quiz, /market',
       'ตัวอย่าง: /price granite 30x20 2',
       'วัสดุ: granite, marble, acrylic, sandstone'
@@ -114,6 +216,15 @@ function staffReply(text) {
     } catch (error) {
       if (error instanceof StaffPricingInputError) return error.message;
       return 'ไม่สามารถคำนวณราคาได้';
+    }
+  }
+
+  if (command === '/draft') {
+    try {
+      return formatCustomerResponseDraft(normalized);
+    } catch (error) {
+      if (error instanceof StaffResponseDraftInputError) return error.message;
+      return 'ไม่สามารถจัดทำ draft plan ได้';
     }
   }
 
@@ -187,7 +298,10 @@ function createStaffTelegramBot({ client, allowedChatIds } = {}) {
 module.exports = {
   TelegramApiError,
   TelegramConfigError,
+  StaffResponseDraftInputError,
   staffReply,
+  parseDraftCommand,
+  formatCustomerResponseDraft,
   parseAllowedChatIds,
   createStaffTelegramBot,
   // Compatibility aliases for callers of the original module API.
