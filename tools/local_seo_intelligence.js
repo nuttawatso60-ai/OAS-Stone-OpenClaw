@@ -164,9 +164,10 @@ function compareObservation(left, right) {
   return 0;
 }
 
-function buildSeoObservationCoverage({ keywordRegistry, observations }) {
+function buildSeoObservationCoverage({ keywordRegistry, observations, competitorRegistry }) {
   validateKeywordRegistry(keywordRegistry);
   if (!Array.isArray(observations)) throw new LocalSeoDataError('local SEO observations are invalid');
+  validateSeoObservations({ version: 1, observations }, keywordRegistry, competitorRegistry);
   return keywordRegistry.keywords.map(keyword => {
     const records = observations.filter(observation => observation.keywordId === keyword.id).sort(compareObservation);
     const timestamps = records.map(record => Date.parse(record.observedAt));
@@ -209,8 +210,8 @@ function buildLocalSeoMarketContext({ keywordRegistry, marketSnapshot }) {
   });
 }
 
-function buildLocalSeoSnapshot({ keywordRegistry, observations, marketSnapshot }) {
-  const coverage = buildSeoObservationCoverage({ keywordRegistry, observations });
+function buildLocalSeoSnapshot({ keywordRegistry, observations, competitorRegistry, marketSnapshot }) {
+  const coverage = buildSeoObservationCoverage({ keywordRegistry, observations, competitorRegistry });
   const market = buildLocalSeoMarketContext({ keywordRegistry, marketSnapshot });
   const keywords = keywordRegistry.keywords.map((keyword, index) => ({
     ...keyword,
@@ -228,7 +229,7 @@ function buildConfiguredLocalSeoSnapshot({ keywordsPath = DEFAULT_LOCAL_SEO_KEYW
   const competitorRegistry = loadCompetitorRegistry(registryPath);
   const observations = loadSeoObservations(observationsPath, keywordRegistry, competitorRegistry);
   const marketSnapshot = buildMarketCoverageSnapshot(competitorRegistry);
-  return buildLocalSeoSnapshot({ keywordRegistry, observations, marketSnapshot });
+  return buildLocalSeoSnapshot({ keywordRegistry, observations, competitorRegistry, marketSnapshot });
 }
 
 module.exports = {

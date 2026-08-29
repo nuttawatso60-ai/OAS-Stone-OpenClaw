@@ -138,7 +138,7 @@ test('observation coverage includes zero keywords, sorts, deduplicates, and uses
     withoutCompetitorId(observation({ keywordId: 'beta-keyword', resultType: 'own_business', entityName: 'Own', resultUrl: 'https://results.example/o' })),
     observation({ keywordId: 'beta-keyword', resultType: 'verified_competitor', competitorId: 'verified-a', entityName: 'Verified A', resultUrl: 'https://results.example/c' })
   ];
-  const coverage = buildSeoObservationCoverage({ keywordRegistry, observations });
+  const coverage = buildSeoObservationCoverage({ keywordRegistry, observations, competitorRegistry });
   assert.deepEqual(coverage.map(entry => entry.keywordId), ['alpha-keyword', 'beta-keyword', 'unlinked-keyword']);
   assert.deepEqual(coverage[0].surfacesObserved, ['google_maps', 'google_organic']);
   assert.equal(coverage[0].latestObservedAt, '2026-08-29T12:00:00+01:00');
@@ -150,7 +150,7 @@ test('observation coverage includes zero keywords, sorts, deduplicates, and uses
     surfacesObserved: [], ownBusinessObserved: false, verifiedCompetitorIds: [],
     unmatchedBusinessNames: [], latestObservedAt: null, records: []
   });
-  const reversed = buildSeoObservationCoverage({ keywordRegistry, observations: [...observations].reverse() });
+  const reversed = buildSeoObservationCoverage({ keywordRegistry, observations: [...observations].reverse(), competitorRegistry });
   assert.deepEqual(reversed, coverage);
 });
 
@@ -178,11 +178,23 @@ test('market handoff maps services without using market snapshot keyword text', 
   assert.doesNotMatch(JSON.stringify(context), /WRONG MARKET QUERY/);
 });
 
+test('direct coverage and snapshot derivation validate competitor references', () => {
+  for (const competitorId of ['pending-a', 'unknown']) {
+    const invalid = observation({ competitorId });
+    assertRejects(() => buildSeoObservationCoverage({
+      keywordRegistry, observations: [invalid], competitorRegistry
+    }));
+    assertRejects(() => buildLocalSeoSnapshot({
+      keywordRegistry, observations: [invalid], competitorRegistry, marketSnapshot: { services: [] }
+    }));
+  }
+});
+
 test('combined snapshot has observations and market context but no interpretation metrics', () => {
   const marketSnapshot = buildMarketCoverageSnapshot({ version: 1, competitors: [
     { ...verified, serviceEvidence: [{ service: 'stone_sign', sourceUrl: 'https://source.example/a' }] }
   ] });
-  const snapshot = buildLocalSeoSnapshot({ keywordRegistry, observations: [], marketSnapshot });
+  const snapshot = buildLocalSeoSnapshot({ keywordRegistry, observations: [], competitorRegistry, marketSnapshot });
   assert.equal(snapshot.keywords.length, 3);
   assert.deepEqual(snapshot.unobservedKeywordIds, ['alpha-keyword', 'beta-keyword', 'unlinked-keyword']);
   const forbidden = /searchVolume|volume|cpc|difficulty|keywordDifficulty|ranking|rankingScore|competitionScore|opportunity|opportunityScore|priority|recommendation|demand|demandScore/i;
