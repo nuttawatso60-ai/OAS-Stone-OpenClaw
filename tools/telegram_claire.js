@@ -149,6 +149,33 @@ function formatMoney(value) {
   }).format(value);
 }
 
+function formatCustomerMessage(request, plan) {
+  if (plan.state !== 'ready' || !Number.isFinite(plan.pricing?.current?.total)) return null;
+  return [
+    `ขอแจ้งราคา ${request.material} ขนาด ${request.width}×${request.height} ซม. จำนวน ${request.quantity}`,
+    `ราคารวมประมาณ ${formatMoney(plan.pricing.current.total)} บาท`,
+    'ราคานี้เป็นการประเมินเบื้องต้นและอาจเปลี่ยนแปลงตามรายละเอียดงาน'
+  ].join('\n');
+}
+
+function parseTargetCommand(text) {
+  const parts = typeof text === 'string' ? text.trim().split(/\s+/) : [];
+  if (commandName(parts[0]) !== '/target' || parts.length !== 3) {
+    throw new StaffResponseDraftInputError('ใช้: /target <draft_id> <customer_chat_id>');
+  }
+  if (!/^-?\d+$/.test(parts[2]) || parts[2] === '0' || parts[2] === '-0') {
+    throw new StaffResponseDraftInputError('customer chat ID ต้องเป็นเลข Telegram ที่ไม่เป็นศูนย์');
+  }
+  return { id: parts[1], targetChatId: parts[2] };
+}
+
+async function sendCustomerTelegramMessage(client, targetChatId, text) {
+  if (!client || typeof client.sendMessage !== 'function') throw new TelegramConfigError('Telegram client is required');
+  if (typeof targetChatId !== 'string' || !/^-?\d+$/.test(targetChatId)) throw new TelegramConfigError('customer target is invalid');
+  if (typeof text !== 'string' || text.trim() === '') throw new TelegramConfigError('customer message is required');
+  return client.sendMessage(targetChatId, text);
+}
+
 function formatCustomerResponseDraft(text, { planner = planCustomerResponse } = {}) {
   if (typeof planner !== 'function') throw new StaffResponseDraftInputError('planner is unavailable');
   const request = parseDraftCommand(text);
@@ -212,7 +239,7 @@ function formatPendingDraft(draft) {
     draft.renderedText,
     `Draft ID: ${draft.id}`,
     `หมดอายุ: ${new Date(draft.expiresAt).toISOString()}`,
-    'ใช้ /approve <draft_id> เพื่ออนุมัติพร้อมส่งให้ระบบตรวจสอบซ้ำ'
+    'ใช้ /target <draft_id> <customer_chat_id> แล้ว /approve <draft_id>; ยังไม่ส่งจนกว่าจะครบทุกขั้นตอน'
   ].join('\n');
 }
 
@@ -222,7 +249,17 @@ function formatApprovalError(error) {
     unknown_draft: 'ไม่พบ draft นี้หรือหมดอายุแล้ว',
     expired_draft: 'draft หมดอายุแล้ว ไม่อนุมัติ',
     draft_already_approved: 'draft นี้อนุมัติไปแล้ว ไม่ส่งซ้ำ',
-    draft_not_ready: 'draft ที่ไม่ใช่ ready อนุมัติส่งไม่ได้'
+    draft_not_ready: 'draft ที่ไม่ใช่ ready อนุมัติส่งไม่ได้',
+    target_required: 'ยังไม่ส่ง: ต้อง bind customer target ด้วย /target ก่อน',
+    invalid_target: 'customer chat ID ไม่ถูกต้อง',
+    draft_not_pending: 'draft นี้ไม่อยู่ในสถานะ pending จึง bind target ไม่ได้',
+    payload_unavailable: 'ไม่สามารถส่งได้: customer payload ไม่พร้อม',
+    payload_changed: 'ไม่สามารถส่งได้: customer payload เปลี่ยนแปลง',
+    failed_retryable: 'ส่งไม่สำเร็จ: retry ได้โดยกด /approve ซ้ำอย่างชัดเจน',
+    failed_uncertain: 'ส่งไม่สำเร็จแบบไม่แน่ชัด: ระงับการ retry เพื่อป้องกันส่งซ้ำ',
+    send_unavailable: 'ไม่สามารถส่งได้: customer send primitive ไม่พร้อม',
+    draft_already_sent: 'draft นี้ส่งแล้ว ไม่ส่งซ้ำ',
+    send_uncertain: 'สถานะการส่งไม่แน่ชัด: ระงับการ retry เพื่อป้องกันส่งซ้ำ'
   };
   return messages[error.code] ?? 'ไม่สามารถอนุมัติ draft ได้';
 }
@@ -258,7 +295,12 @@ function staffReply(text, { draftStore = DEFAULT_DRAFT_STORE, planner = planCust
   if (command === '/draft') {
     try {
       const { request, plan } = buildCustomerResponseDraft(normalized, { planner });
-      const draft = draftStore.create({ request, plan, renderedText: formatCustomerResponseDraft(normalized, { planner }) });
+      const draft = draftStore.create({
+        request,
+        plan,
+        renderedText: formatCustomerResponseDraft(normalized, { planner: () => plan }),
+        customerText: formatCustomerMessage(request, plan)
+      });
       return formatPendingDraft(draft);
     } catch (error) {
       if (error instanceof StaffResponseDraftInputError) return error.message;
@@ -266,20 +308,24 @@ function staffReply(text, { draftStore = DEFAULT_DRAFT_STORE, planner = planCust
     }
   }
 
-  if (command === '/approve') {
-    const parts = normalized.split(/\s+/);
-    if (parts.length !== 2) return 'ใช้: /approve <draft_id>';
+  if (command === '/target') {
     try {
-      const draft = draftStore.approve(parts[1]);
+      const target = parseTargetCommand(normalized);
+      const draft = draftStore.bindTarget(target.id, target.targetChatId);
       return [
-        `อนุมัติ draft ${draft.id} แล้ว`,
-        'สถานะ: approved',
-        'ยังไม่ส่งให้ลูกค้า: ไม่พบ customer target/send primitive ที่ได้รับอนุมัติ'
+        `Draft ID: ${draft.id}`,
+        `Target bound: ${draft.targetChatId}`,
+        'สถานะ: pending; ยังไม่ส่งข้อความ'
       ].join('\n');
     } catch (error) {
+      if (error instanceof StaffResponseDraftInputError) return error.message;
       if (error instanceof StaffDraftError) return formatApprovalError(error);
-      return 'ไม่สามารถอนุมัติ draft ได้';
+      return 'ไม่สามารถ bind customer target ได้';
     }
+  }
+
+  if (command === '/approve') {
+    return formatApprovalError(new StaffDraftError('send_unavailable'));
   }
 
   if (['/materials', '/sizes', '/train', '/quiz'].includes(command)) {
@@ -335,7 +381,10 @@ function createStaffTelegramBot({ client, allowedChatIds, draftStore = new Staff
       if (!message || typeof message.text !== 'string' || message.chat?.id === undefined) continue;
       const chatId = String(message.chat.id);
       if (!allowedChatIds.has(chatId)) continue;
-      await client.sendMessage(message.chat.id, staffReply(message.text, { draftStore }));
+      await client.sendMessage(message.chat.id, await staffReplyAsync(message.text, {
+        draftStore,
+        sendCustomerMessage: (targetChatId, text) => sendCustomerTelegramMessage(client, targetChatId, text)
+      }));
     }
 
     return { processed: updates.length, nextOffset };
@@ -349,6 +398,25 @@ function createStaffTelegramBot({ client, allowedChatIds, draftStore = new Staff
   };
 }
 
+async function staffReplyAsync(text, { draftStore = DEFAULT_DRAFT_STORE, sendCustomerMessage } = {}) {
+  const normalized = typeof text === 'string' ? text.trim() : '';
+  const command = commandName(normalized.split(/\s+/, 1)[0]);
+  if (command !== '/approve') return staffReply(normalized, { draftStore });
+  const parts = normalized.split(/\s+/);
+  if (parts.length !== 2) return 'ใช้: /approve <draft_id>';
+  try {
+    const draft = await draftStore.approveAndSend(parts[1], sendCustomerMessage);
+    return [
+      `อนุมัติและส่ง draft ${draft.id} แล้ว`,
+      `Target: ${draft.targetChatId}`,
+      'สถานะ: sent'
+    ].join('\n');
+  } catch (error) {
+    if (error instanceof StaffDraftError) return formatApprovalError(error);
+    return 'ไม่สามารถส่ง customer message ได้';
+  }
+}
+
 module.exports = {
   TelegramApiError,
   TelegramConfigError,
@@ -359,6 +427,10 @@ module.exports = {
   parseDraftCommand,
   buildCustomerResponseDraft,
   formatCustomerResponseDraft,
+  formatCustomerMessage,
+  parseTargetCommand,
+  sendCustomerTelegramMessage,
+  staffReplyAsync,
   parseAllowedChatIds,
   createStaffTelegramBot,
   // Compatibility aliases for callers of the original module API.
