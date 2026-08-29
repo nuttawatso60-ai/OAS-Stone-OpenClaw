@@ -90,3 +90,15 @@
 | OAS / โอ.เอ.เอส. / @oas.101 | own-business discovery filter | ❌ ธุรกิจของเราเอง จึงตัดออกจาก competitor discovery |
 
 ผลอื่นนอกจังหวัดหรือผู้ขายระดับประเทศไม่ผ่านเกณฑ์ location/attribution และไม่บันทึกรายการรายตัว
+
+## 2026-08-29 — Roi Et procurement verification round 9
+
+| Lead | ช่องทาง/ผล |
+| --- | --- |
+| ร้อยเอ็ดแกรนิต | Thailand Yellow Pages ยืนยันชื่อธุรกิจ ที่อยู่ 249 ถนนรอบเมือง ตำบลรอบเมือง อำเภอเมืองร้อยเอ็ด จังหวัดร้อยเอ็ด 45000 และหมวด `หินแกรนิต`; ตรวจ exact vendor-name, vendor + ป้าย/จัดซื้อ/จัดจ้าง/ผู้รับจ้าง, address-anchored, work-item-first, ผู้ชนะจัดซื้อเทศบาลร้อยเอ็ด และ public procurement/government sources แล้วไม่พบ source สาธารณะที่ reproducible ซึ่งผูกธุรกิจนี้กับงานป้ายหิน/ป้ายหินอ่อน/ป้ายหินแกรนิต/แกะสลัก; คง Grade B / unresolved |
+
+ตรวจ PDF ผู้ชนะจัดซื้อของเทศบาลเมืองร้อยเอ็ดฉบับหนึ่งจาก [หน้าประกาศ](https://roietmunicipal.go.th/roiet/%E0%B8%9B%E0%B8%A3%E0%B8%B0%E0%B8%81%E0%B8%B2%E0%B8%A8%E0%B8%9C%E0%B8%B9%E0%B9%89%E0%B8%8A%E0%B8%99%E0%B8%B0%E0%B8%81%E0%B8%B2%E0%B8%A3%E0%B8%88%E0%B8%B1%E0%B8%94%E0%B8%8B/) ซึ่งเป็น scanned JPEG/image content ไม่มี usable embedded font/text layer และไม่มี ToUnicode mapping จึงค้นข้อความ vendor/work-item ด้วย machine search ไม่ได้หากไม่มี OCR; นี่เป็นข้อจำกัดของเอกสารฉบับนี้/ช่องทางที่ตรวจ ไม่ใช่ข้อสรุปว่าเอกสารจัดซื้อของร้อยเอ็ดทั้งหมดเป็น scanned
+
+ไม่พบ vendor ใหม่ที่ผ่านครบ exact identifiable business/vendor + Roi Et attribution + explicit stone/granite/marble sign work; generic employment/municipality results, template procurement documents, out-of-province sellers และ Facebook-only records ที่ไม่มี identity/location/service แบบ reproducible ถูกปฏิเสธ
+
+สรุป: competitor discovery bounded/closed หลัง Round 9. คง verified competitors เดิม, คง `chinna-kae-salak-pai-hin` และ `ran-phong-granite` เป็น `pending_verification`, และคง `ร้อยเอ็ดแกรนิต` นอก registry เป็น Grade B / unresolved; จะพิจารณาใหม่เมื่อมี external lead/source ใหม่ที่ผูกกับงาน signage โดยตรง
