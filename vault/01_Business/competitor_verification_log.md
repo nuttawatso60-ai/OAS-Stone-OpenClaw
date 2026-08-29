@@ -65,3 +65,10 @@
 | ป้ายหินแกะสลัก เกษตรวิสัย | public Google Maps `query_place_id` URL for `ChIJqwW3GwCLFzERhWbYlIWQjiI`; public HTML exposes the Place ID but not CID `2490086547384723077` | kept verified with `https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI`; removed inferred CID as source evidence |
 | ชินนะ แกะสลักป้ายหิน | indexed search for Page ID/name/location and public Facebook URL re-check | exact `Roi Et, Thailand, 45170` location was visible only in authenticated/local Facebook view and not reproduced by indexed/public source; reverted `chinna-kae-salak-pai-hin` to `pending_verification` |
 | ร้านผ่องแกรนิต | public Maps CID/HTML check and exact web search; `ผ่องใสแกรนิต` appeared as false positive | CID `2460950551785954836` did not expose exact public metadata outside local Maps view; reverted `ran-phong-granite` to `pending_verification` and restored display name `ร้านผ่องแกรนิต` |
+
+## 2026-08-29 — public-source verification round 6
+
+| คู่แข่ง | ช่องทางใหม่ | ผล |
+| ------- | ----------- | -- |
+| ชินนะ แกะสลักป้ายหิน | DBD, e-GP/data.go.th และเอกสารหน่วยงานท้องถิ่น/โรงเรียนแบบ public/indexed | ❌ ไม่พบผลที่ผูก exact identity + Roi Et; ผลที่พบเป็นบริษัท/บุคคลหรือเอกสารคนละรายการ; คง `pending_verification` |
+| ร้านผ่องแกรนิต | Google Maps Place-ID path, DBD และ public address-anchored/government/procurement search | ❌ ไม่พบ Place ID หรือ source ที่ผูก exact `ผ่องแกรนิต` + ที่อยู่ร้อยเอ็ดแบบ reproducible; ผลที่พบเป็นถนน/รายการอื่น; คง `pending_verification` |
