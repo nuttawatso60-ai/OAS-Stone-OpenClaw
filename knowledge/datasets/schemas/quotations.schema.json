@@ -14,6 +14,7 @@
         "properties": {
           "id": { "type": "string", "pattern": "^quote_[a-z0-9_]+$" },
           "product_type": { "type": "string", "minLength": 1 },
+          "material": { "type": "string", "minLength": 1 },
           "requirements": { "type": "array", "items": { "type": "string" } },
           "outcome": { "enum": ["quoted", "needs_follow_up", "declined", "unknown"] },
           "price_range_thb": {
@@ -25,8 +26,55 @@
             },
             "additionalProperties": false
           },
+          "evidence": {
+            "type": "object",
+            "required": ["source_ref", "chunk_id", "message_range"],
+            "properties": {
+              "source_ref": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+\\.txt$"
+              },
+              "chunk_id": { "type": "string", "pattern": "^[^:\u0000-\u001f]+:[0-9]{4}$" },
+              "message_range": {
+                "type": "object",
+                "required": ["start", "end"],
+                "properties": {
+                  "start": { "type": "integer", "minimum": 0 },
+                  "end": { "type": "integer", "minimum": 0 }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          },
+          "classification": {
+            "enum": ["observed_quote", "candidate_rule", "exception"]
+          },
+          "quoted_price_thb": { "type": "number", "exclusiveMinimum": 0 },
+          "size": {
+            "type": "object",
+            "required": ["width", "height", "unit"],
+            "properties": {
+              "width": { "type": "number", "exclusiveMinimum": 0 },
+              "height": { "type": "number", "exclusiveMinimum": 0 },
+              "unit": { "const": "cm" },
+              "quantity": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          },
           "status": { "enum": ["draft", "approved", "deprecated"] }
         },
+        "allOf": [
+          {
+            "if": { "properties": { "evidence": {} }, "required": ["evidence"] },
+            "then": { "properties": { "classification": {} }, "required": ["classification"] }
+          },
+          {
+            "if": { "properties": { "classification": {} }, "required": ["classification"] },
+            "then": { "properties": { "evidence": {} }, "required": ["evidence"] }
+          }
+        ],
         "additionalProperties": false
       }
     }
