@@ -10,11 +10,15 @@ const {
   SEARCH_SURFACES,
   RESULT_TYPES,
   LocalSeoDataError,
+  buildConfiguredLocalSeoSnapshot,
   buildLocalSeoMarketContext,
   buildLocalSeoSnapshot,
   buildSeoObservationCoverage,
+  isOwnedBusinessUrl,
+  loadBusinessProfile,
   loadKeywordRegistry,
   loadSeoObservations,
+  validateBusinessProfile,
   validateKeywordRegistry,
   validateSeoObservations
 } = require('../tools/local_seo_intelligence');
@@ -31,6 +35,14 @@ const keywordRegistry = {
 const verified = { id: 'verified-a', name: 'Verified A', province: 'Roi Et', verificationStatus: 'verified', sourceUrls: ['https://source.example/a'] };
 const pending = { id: 'pending-a', name: 'Pending A', province: 'Roi Et', verificationStatus: 'pending_verification', sourceUrls: [] };
 const competitorRegistry = { version: 1, competitors: [verified, pending] };
+const businessProfile = {
+  version: 1,
+  ownedUrls: {
+    facebook: 'https://www.facebook.com/profile.php?id=100076982186184',
+    googleMaps: 'https://maps.app.goo.gl/Uuny7F3LeWBQ5Cax8',
+    tiktok: 'https://www.tiktok.com/@oas.101'
+  }
+};
 
 function observation(overrides = {}) {
   return {
@@ -202,8 +214,50 @@ test('combined snapshot has observations and market context but no interpretatio
   assert.doesNotMatch(JSON.stringify(snapshot), /ตลาดนี้ไม่มีคู่แข่ง/);
 });
 
-test('configured loaders keep production observations empty and do not create a business profile', () => {
+test('business profile validates and production profile stores only owner-supplied anchors', () => {
+  const loaded = loadBusinessProfile();
+  assert.deepEqual(loaded, businessProfile);
+  assert.equal(Object.prototype.hasOwnProperty.call(loaded, 'canonicalName'), false);
+  for (const invalid of [
+    { version: 2, ownedUrls: businessProfile.ownedUrls },
+    { version: 1, ownedUrls: {} },
+    { version: 1, ownedUrls: { facebook: 'not-url' } },
+    { version: 1, ownedUrls: { facebook: '' } },
+    { version: 1, ownedUrls: { facebook: 'ftp://example.com' } },
+    { version: 1, ownedUrls: { unknown: 'https://example.com' } },
+    { version: 1, ownedUrls: businessProfile.ownedUrls, address: 'Roi Et' },
+    { version: 1, ownedUrls: { ...businessProfile.ownedUrls, youtube: 'https://youtube.com/example' } }
+  ]) assertRejects(() => validateBusinessProfile(invalid));
+});
+
+test('owned URL matching is conservative and platform-specific', () => {
+  assert.equal(isOwnedBusinessUrl('https://www.tiktok.com/@oas.101', businessProfile), true);
+  assert.equal(isOwnedBusinessUrl('https://www.tiktok.com/@oas.101?fbclid=test#bio', businessProfile), true);
+  assert.equal(isOwnedBusinessUrl('https://www.tiktok.com/@other', businessProfile), false);
+  assert.equal(isOwnedBusinessUrl('https://www.facebook.com/profile.php?id=100076982186184&utm_source=x', businessProfile), true);
+  assert.equal(isOwnedBusinessUrl('https://facebook.com/profile.php?utm_source=x&id=100076982186184', businessProfile), true);
+  assert.equal(isOwnedBusinessUrl('https://www.facebook.com/profile.php?id=100000000000000', businessProfile), false);
+  assert.equal(isOwnedBusinessUrl('https://www.facebook.com/oas.stone', businessProfile), false);
+  assert.equal(isOwnedBusinessUrl('https://maps.app.goo.gl/Uuny7F3LeWBQ5Cax8', businessProfile), true);
+  assert.equal(isOwnedBusinessUrl('https://maps.app.goo.gl/other', businessProfile), false);
+  assert.equal(isOwnedBusinessUrl('https://example.com/business?name=OAS', businessProfile), false);
+});
+
+test('optional business profile validation supports own_business without changing default compatibility', () => {
+  const own = withoutCompetitorId(observation({
+    resultType: 'own_business',
+    resultUrl: 'https://www.tiktok.com/@oas.101?fbclid=test'
+  }));
+  assert.doesNotThrow(() => validateSeoObservations(observationDocument([own]), keywordRegistry, competitorRegistry, businessProfile));
+  assertRejects(() => validateSeoObservations(observationDocument([own]), keywordRegistry, competitorRegistry, {
+    version: 1, ownedUrls: { tiktok: 'https://www.tiktok.com/@different' }
+  }));
+  assert.doesNotThrow(() => validateSeoObservations(observationDocument([own]), keywordRegistry, competitorRegistry));
+});
+
+test('configured loaders keep production observations empty and include market context', () => {
   const observations = loadSeoObservations();
   assert.deepEqual(observations, []);
-  assert.equal(require('node:fs').existsSync(require('node:path').join(__dirname, '..', 'data', 'business_profile.json')), false);
+  const snapshot = buildConfiguredLocalSeoSnapshot();
+  assert.equal(snapshot.keywords.length, loadKeywordRegistry().keywords.length);
 });

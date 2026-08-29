@@ -9,6 +9,7 @@ const {
 
 const DEFAULT_LOCAL_SEO_KEYWORDS_PATH = path.join(__dirname, '..', 'data', 'local_seo_keywords.json');
 const DEFAULT_LOCAL_SEO_OBSERVATIONS_PATH = path.join(__dirname, '..', 'data', 'local_seo_observations.json');
+const DEFAULT_BUSINESS_PROFILE_PATH = path.join(__dirname, '..', 'data', 'business_profile.json');
 const KEYWORD_INTENTS = Object.freeze(['commercial_local', 'service_local']);
 const SEARCH_SURFACES = Object.freeze(['google_organic', 'google_local_pack', 'google_maps']);
 const RESULT_TYPES = Object.freeze(['own_business', 'verified_competitor', 'unmatched_business']);
@@ -17,6 +18,7 @@ const OBSERVATION_FIELDS = Object.freeze([
   'keywordId', 'surface', 'resultType', 'entityName', 'competitorId', 'resultUrl',
   'position', 'locationLabel', 'sourceUrl', 'observedAt'
 ]);
+const OWNED_URL_KEYS = Object.freeze(['facebook', 'googleMaps', 'tiktok']);
 
 class LocalSeoDataError extends Error {
   constructor(message) {
@@ -91,7 +93,62 @@ function loadKeywordRegistry(filePath = DEFAULT_LOCAL_SEO_KEYWORDS_PATH) {
   return validateKeywordRegistry(readJson(filePath, 'local SEO keyword registry unavailable'));
 }
 
-function validateSeoObservations(document, keywordRegistry, competitorRegistry) {
+function validateBusinessProfile(profile) {
+  if (!isPlainObject(profile) || profile.version !== 1 || !isPlainObject(profile.ownedUrls)
+    || !rejectUnknownKeys(profile, ['version', 'ownedUrls'])
+    || !rejectUnknownKeys(profile.ownedUrls, OWNED_URL_KEYS)) {
+    throw new LocalSeoDataError('business profile is invalid');
+  }
+  const entries = Object.entries(profile.ownedUrls);
+  if (entries.length === 0 || entries.some(([, value]) => typeof value !== 'string'
+    || value.trim() === '' || !isHttpUrl(value))) {
+    throw new LocalSeoDataError('business profile is invalid');
+  }
+  return profile;
+}
+
+function loadBusinessProfile(filePath = DEFAULT_BUSINESS_PROFILE_PATH) {
+  return validateBusinessProfile(readJson(filePath, 'business profile unavailable'));
+}
+
+function normalizedUrl(value) {
+  const url = new URL(value);
+  url.search = '';
+  url.hash = '';
+  url.pathname = url.pathname.replace(/\/+$/, '') || '/';
+  return url;
+}
+
+function isOwnedBusinessUrl(resultUrl, businessProfile) {
+  if (typeof resultUrl !== 'string' || !isHttpUrl(resultUrl)) return false;
+  try {
+    const profile = validateBusinessProfile(businessProfile);
+    const rawResult = new URL(resultUrl);
+    const result = normalizedUrl(resultUrl);
+    const facebook = profile.ownedUrls.facebook;
+    if (facebook && (result.hostname === 'facebook.com' || result.hostname === 'www.facebook.com')
+      && result.pathname === '/profile.php') {
+      const configured = new URL(facebook);
+      if (configured.pathname === '/profile.php'
+        && rawResult.searchParams.get('id') === configured.searchParams.get('id')
+        && rawResult.searchParams.get('id') === '100076982186184') return true;
+    }
+    const tiktok = profile.ownedUrls.tiktok;
+    if (tiktok) {
+      const configured = normalizedUrl(tiktok);
+      if ((result.hostname === 'tiktok.com' || result.hostname === 'www.tiktok.com')
+        && configured.hostname === result.hostname
+        && result.pathname === configured.pathname) return true;
+    }
+    const googleMaps = profile.ownedUrls.googleMaps;
+    if (googleMaps && normalizedUrl(googleMaps).toString() === result.toString()) return true;
+    return false;
+  } catch (error) {
+    return false;
+  }
+}
+
+function validateSeoObservations(document, keywordRegistry, competitorRegistry, businessProfile) {
   validateKeywordRegistry(keywordRegistry);
   if (!isPlainObject(competitorRegistry) || !Array.isArray(competitorRegistry.competitors)) {
     throw new LocalSeoDataError('competitor registry is invalid');
@@ -130,6 +187,10 @@ function validateSeoObservations(document, keywordRegistry, competitorRegistry) 
       }
     } else if (Object.prototype.hasOwnProperty.call(observation, 'competitorId')) {
       throw new LocalSeoDataError('local SEO non-competitor result cannot have competitorId');
+    }
+    if (observation.resultType === 'own_business' && businessProfile
+      && !isOwnedBusinessUrl(observation.resultUrl, businessProfile)) {
+      throw new LocalSeoDataError('local SEO own business URL is not owned');
     }
     const key = [observation.keywordId, observation.surface, observation.observedAt,
       observation.resultUrl, observation.resultType, observation.entityName].join('\u0000');
@@ -245,6 +306,10 @@ module.exports = {
   buildSeoObservationCoverage,
   loadKeywordRegistry,
   loadSeoObservations,
+  DEFAULT_BUSINESS_PROFILE_PATH,
+  isOwnedBusinessUrl,
+  loadBusinessProfile,
+  validateBusinessProfile,
   validateKeywordRegistry,
   validateSeoObservations
 };
