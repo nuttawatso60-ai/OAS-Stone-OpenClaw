@@ -157,3 +157,36 @@ Response examples are evidence-backed examples, not universal response rules.
 Changes to `data/pricing_rules.json` require explicit owner approval; this pipeline
 never changes that file automatically. Raw customer chats and unnecessary PII are not
 committed, and Milestone 1 keeps tracked evidence datasets empty.
+
+## Evidence-backed customer response planning
+
+`tools/customer_response_planner.js` assembles a deterministic response plan from a
+normalized request. It does not call an LLM, send customer messages, or wire into
+Telegram. The plan separates current pricing, historical quotation evidence,
+response-style guidance, missing information, conflicts, and evidence pointers.
+
+Authority order is:
+
+```text
+current pricing engine → historical quotation evidence → reviewed response style
+```
+
+`data/pricing_rules.json` and `tools/pricing_engine.js` remain authoritative for
+computed/current pricing. Historical quotations explain evidence only and never
+override the engine or modify pricing rules. Response-style examples guide question
+sequence, price explanation, negotiation, objection response, closing, and terminology;
+they do not add factual claims or prices.
+
+The planner uses these states:
+
+```text
+ready             complete pricing conditions and no unresolved conflict
+needs_information required product/material/dimension information is missing
+conflict          relevant historical evidence conflicts with current calculation
+unsupported       malformed or unsupported request/evidence/pricing condition
+```
+
+Unresolved `price_mismatch`, `unknown_material`, `unsupported_dimension`, and
+`insufficient_conditions` findings are surfaced without auto-resolution. Raw and
+processed conversations remain local-only, tracked outputs contain pointers rather
+than full chat text, and no customer profile or PII enrichment is performed.
