@@ -5,8 +5,13 @@ const os = require('node:os');
 const path = require('node:path');
 const {
   MarketDataError,
+  CONTROLLED_SERVICE_IDS,
   buildConfiguredDailyDigest,
   buildDailyDigest,
+  buildDistrictCoverage,
+  buildEvidenceGaps,
+  buildMarketCoverageSnapshot,
+  buildServiceCoverage,
   loadCompetitorRegistry,
   loadObservations,
   validateObservation
@@ -74,6 +79,122 @@ test('verification status and verified source requirements fail closed', () => {
   assert.doesNotThrow(() => loadCompetitorRegistry(tempJson({ version: 1, competitors: [pendingCompetitor()] })));
 });
 
+test('v2 competitor fields validate with controlled service evidence', () => {
+  const sourceUrl = 'https://example.com/business';
+  const registry = {
+    version: 1,
+    competitors: [{
+      ...verifiedCompetitor(),
+      district: '  เมืองร้อยเอ็ด  ',
+      serviceEvidence: [{ service: 'marble_sign', sourceUrl }]
+    }]
+  };
+  const loadedRegistry = loadCompetitorRegistry(tempJson(registry));
+  assert.equal(loadedRegistry.competitors[0].district, 'เมืองร้อยเอ็ด');
+
+  for (const invalidCompetitor of [
+    { ...verifiedCompetitor(), district: '   ' },
+    { ...verifiedCompetitor(), district: 101 },
+    { ...verifiedCompetitor(), serviceEvidence: [{ service: 'unknown', sourceUrl }] },
+    { ...verifiedCompetitor(), serviceEvidence: [{ sourceUrl }] },
+    { ...verifiedCompetitor(), serviceEvidence: [{ service: 'granite' }] },
+    { ...verifiedCompetitor(), serviceEvidence: {} },
+    { ...verifiedCompetitor(), serviceEvidence: [{ service: 'granite', sourceUrl: 'ftp://example.com' }] },
+    { ...verifiedCompetitor(), serviceEvidence: [{ service: 'granite', sourceUrl: 'https://other.example.com' }] },
+    { ...verifiedCompetitor(), serviceEvidence: [
+      { service: 'granite', sourceUrl },
+      { service: 'granite', sourceUrl }
+    ] },
+    { ...pendingCompetitor(), serviceEvidence: [{ service: 'granite', sourceUrl }] }
+  ]) {
+    assert.throws(
+      () => loadCompetitorRegistry(tempJson({ version: 1, competitors: [invalidCompetitor] })),
+      MarketDataError
+    );
+  }
+});
+
+test('coverage functions are deterministic and exclude pending competitors', () => {
+  const sourceUrl = 'https://example.com/business';
+  const registry = {
+    version: 1,
+    competitors: [
+      {
+        ...verifiedCompetitor('verified-b', 'Verified B'),
+        district: 'เมืองรอง',
+        serviceEvidence: [
+          { service: 'granite', sourceUrl },
+          { service: 'marble_sign', sourceUrl }
+        ]
+      },
+      {
+        ...verifiedCompetitor('verified-a', 'Verified A'),
+        district: 'เมืองหลัก',
+        sourceUrls: [sourceUrl, 'https://example.com/second'],
+        serviceEvidence: [
+          { service: 'marble_sign', sourceUrl },
+          { service: 'marble_sign', sourceUrl: 'https://example.com/second' }
+        ]
+      },
+      pendingCompetitor('pending-c', 'Pending C'),
+      {
+        ...verifiedCompetitor('verified-u', 'Verified Unknown'),
+        serviceEvidence: [{ service: 'granite', sourceUrl }]
+      }
+    ]
+  };
+  const services = buildServiceCoverage(registry);
+  assert.deepEqual(services.map(entry => entry.service), CONTROLLED_SERVICE_IDS);
+  assert.deepEqual(services.find(entry => entry.service === 'marble_sign'), {
+    service: 'marble_sign',
+    label: 'ป้ายหินอ่อน',
+    verifiedCompetitorCount: 2,
+    competitorIds: ['verified-a', 'verified-b'],
+    districts: ['เมืองรอง', 'เมืองหลัก']
+  });
+  assert.equal(services.find(entry => entry.service === 'granite_sign').verifiedCompetitorCount, 0);
+  assert.deepEqual(services.find(entry => entry.service === 'granite').competitorIds, ['verified-b', 'verified-u']);
+  assert.deepEqual(buildDistrictCoverage(registry).map(entry => entry.district), ['เมืองรอง', 'เมืองหลัก', null]);
+  assert.deepEqual(buildDistrictCoverage(registry).find(entry => entry.district === null), {
+    district: null,
+    verifiedCompetitorCount: 1,
+    competitorIds: ['verified-u']
+  });
+  assert.deepEqual(buildEvidenceGaps(registry).map(entry => entry.service), [
+    'stone_sign',
+    'granite_sign',
+    'stone_engraving'
+  ]);
+
+  const reversed = { ...registry, competitors: [...registry.competitors].reverse() };
+  assert.deepEqual(buildServiceCoverage(reversed), services);
+  assert.deepEqual(buildDistrictCoverage(reversed), buildDistrictCoverage(registry));
+});
+
+test('market coverage snapshot contains only service-backed source URLs', () => {
+  const sourceUrl = 'https://example.com/business';
+  const registry = {
+    version: 1,
+    competitors: [{
+      ...verifiedCompetitor('stone-a', 'Stone A'),
+      district: 'เมืองหลัก',
+      sourceUrls: [sourceUrl, 'https://example.com/unrelated'],
+      serviceEvidence: [{ service: 'granite', sourceUrl }]
+    }]
+  };
+  const snapshot = buildMarketCoverageSnapshot(registry);
+  const granite = snapshot.services.find(entry => entry.service === 'granite');
+  assert.equal(granite.keyword, 'หินแกรนิต ร้อยเอ็ด');
+  assert.deepEqual(granite.competitors, [{
+    id: 'stone-a',
+    name: 'Stone A',
+    district: 'เมืองหลัก',
+    sourceUrls: [sourceUrl]
+  }]);
+  assert.deepEqual(granite.sourceUrls, [sourceUrl]);
+  assert.deepEqual(snapshot.services.find(entry => entry.service === 'marble_sign').competitors, []);
+});
+
 test('pending competitors are listed by name but cannot produce verified observations', () => {
   const registry = { version: 1, competitors: [verifiedCompetitor(), pendingCompetitor()] };
   const digest = buildDailyDigest({ registry, observations: [], date: '2026-08-28' });
@@ -115,14 +236,40 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   }
   assert.equal(competitorsById.get('baan-tham-pai').name, 'ร้านบ้านทำป้ายแกะสลัก');
   assert.equal(competitorsById.get('baan-tham-pai').verificationStatus, 'verified');
+  assert.equal(competitorsById.get('baan-tham-pai').district, 'เมืองร้อยเอ็ด');
+  assert.equal(competitorsById.get('baan-tham-pai').serviceEvidence, undefined);
   assert.deepEqual(competitorsById.get('baan-tham-pai').sourceUrls, [
     'https://www.google.com/maps?cid=15093723125795807870'
   ]);
+  assert.equal(competitorsById.get('ran-fa-tak').district, 'เมืองร้อยเอ็ด');
+  assert.equal(competitorsById.get('ran-fa-tak').serviceEvidence, undefined);
+  assert.equal(competitorsById.get('phlanchai-pai-hin').district, undefined);
+  assert.deepEqual(competitorsById.get('phlanchai-pai-hin').serviceEvidence, [{
+    service: 'marble_sign',
+    sourceUrl: 'https://www.oic.go.th/FILEWEB/CABINFOCENTER11/DRAWER038/GENERAL/DATA0002/00002266.PDF'
+  }]);
   assert.equal(competitorsById.get('pai-hin-kae-salak-kasetwisai').name, 'ป้ายหินแกะสลัก');
+  assert.equal(competitorsById.get('pai-hin-kae-salak-kasetwisai').district, 'เกษตรวิสัย');
+  assert.equal(competitorsById.get('pai-hin-kae-salak-kasetwisai').serviceEvidence, undefined);
   assert.deepEqual(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls, [
     'https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI'
   ]);
   assert.equal(competitorsById.get('wannasut-art-and-com').name, 'วรรณสุทธิ์ อาร์ต แอนด์ คอม');
+  assert.equal(competitorsById.get('wannasut-art-and-com').district, 'สุวรรณภูมิ');
+  assert.deepEqual(competitorsById.get('wannasut-art-and-com').serviceEvidence, [
+    {
+      service: 'marble_sign',
+      sourceUrl: 'https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA'
+    },
+    {
+      service: 'granite',
+      sourceUrl: 'https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA'
+    }
+  ]);
+  assert.equal(
+    competitorsById.get('wannasut-art-and-com').serviceEvidence.some(evidence => evidence.service === 'stone_engraving'),
+    false
+  );
   assert.deepEqual(competitorsById.get('wannasut-art-and-com').sourceUrls, [
     'https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA'
   ]);
@@ -210,4 +357,31 @@ test('selected date with no observations does not show observations from other d
   assert.doesNotMatch(digest, /Other date only|https:\/\/example\.com\/other/);
   assert.match(digest, /Verified observations[\s\S]*Interpretation/);
   assert.match(digest, /ไม่มีการตีความอัตโนมัติ/);
+});
+
+test('registry coverage renders when selected date has zero observations', () => {
+  const sourceUrl = 'https://example.com/business';
+  const registry = {
+    version: 1,
+    competitors: [{
+      ...verifiedCompetitor('verified-a', 'Verified A'),
+      district: 'เมืองหลัก',
+      serviceEvidence: [{ service: 'granite', sourceUrl }]
+    }]
+  };
+  const digest = buildDailyDigest({
+    registry,
+    observations: [{
+      competitorId: 'verified-a',
+      summary: 'Other date only',
+      sourceUrl,
+      observedAt: '2026-08-27T12:00:00Z'
+    }],
+    date: '2026-08-28'
+  });
+  assert.match(digest, /ไม่มีข้อมูลที่ตรวจสอบแหล่งอ้างอิงได้สำหรับวันที่รายงาน 2026-08-28/);
+  assert.match(digest, /Service evidence coverage[\s\S]*หินแกรนิต: 1 verified competitors/);
+  assert.match(digest, /District coverage[\s\S]*เมืองหลัก: 1 verified competitors/);
+  assert.match(digest, /Evidence gaps \(ยังไม่มี explicit verified evidence\)[\s\S]*ป้ายหิน/);
+  assert.doesNotMatch(digest, /ตลาดนี้ไม่มีคู่แข่ง/);
 });

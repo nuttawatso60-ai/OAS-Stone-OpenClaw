@@ -6,6 +6,7 @@
       "name": "ร้านบ้านทำป้ายแกะสลัก",
       "province": "Roi Et",
       "verificationStatus": "verified",
+      "district": "เมืองร้อยเอ็ด",
       "sourceUrls": [
         "https://www.google.com/maps?cid=15093723125795807870"
       ]
@@ -15,6 +16,12 @@
       "name": "พลาญชัยป้ายหิน",
       "province": "Roi Et",
       "verificationStatus": "verified",
+      "serviceEvidence": [
+        {
+          "service": "marble_sign",
+          "sourceUrl": "https://www.oic.go.th/FILEWEB/CABINFOCENTER11/DRAWER038/GENERAL/DATA0002/00002266.PDF"
+        }
+      ],
       "sourceUrls": [
         "https://www.oic.go.th/FILEWEB/CABINFOCENTER11/DRAWER038/GENERAL/DATA0002/00002266.PDF"
       ]
@@ -31,6 +38,7 @@
       "name": "ฟ้าตากแกรนิต",
       "province": "Roi Et",
       "verificationStatus": "verified",
+      "district": "เมืองร้อยเอ็ด",
       "sourceUrls": [
         "https://roiet.police.go.th/pdf/uploads/%E0%B8%A1%E0%B8%B4.%E0%B8%A2.64.pdf"
       ]
@@ -47,6 +55,7 @@
       "name": "ป้ายหินแกะสลัก",
       "province": "Roi Et",
       "verificationStatus": "verified",
+      "district": "เกษตรวิสัย",
       "sourceUrls": [
         "https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI"
       ]
@@ -56,6 +65,17 @@
       "name": "วรรณสุทธิ์ อาร์ต แอนด์ คอม",
       "province": "Roi Et",
       "verificationStatus": "verified",
+      "district": "สุวรรณภูมิ",
+      "serviceEvidence": [
+        {
+          "service": "marble_sign",
+          "sourceUrl": "https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA"
+        },
+        {
+          "service": "granite",
+          "sourceUrl": "https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA"
+        }
+      ],
       "sourceUrls": [
         "https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA"
       ]

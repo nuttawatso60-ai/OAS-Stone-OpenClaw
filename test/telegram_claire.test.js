@@ -196,6 +196,9 @@ test('market command is internal, deterministic, and supports group suffixes', (
   assert.equal(staffReply('/market@oas_stone_shop_bot'), market);
   assert.match(market, /Market Intelligence รายวัน — \d{4}-\d{2}-\d{2}/);
   assert.match(market, /Verified observations/);
+  assert.match(market, /Service evidence coverage/);
+  assert.match(market, /District coverage/);
+  assert.match(market, /Evidence gaps \(ยังไม่มี explicit verified evidence\)/);
   assert.match(market, /Competitors pending verification/);
   assert.match(market, /Interpretation/);
   assert.doesNotMatch(market, /base_per_cm2|cnc_rate_per_minute/);

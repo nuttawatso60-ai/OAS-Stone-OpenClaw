@@ -90,6 +90,24 @@ the digest separates verified observations from interpretation.
 Daily digest selection uses the UTC calendar date from each observation's
 `observedAt`; observations from other dates are excluded.
 
+Market Intelligence v2 also supports optional source-backed `district` and
+`serviceEvidence` fields on competitors. Controlled service IDs are
+`stone_sign`, `marble_sign`, `granite_sign`, `granite`, and `stone_engraving`;
+presentation labels are kept separate from these IDs. Each service evidence
+entry must use a valid HTTP(S) URL already present in that competitor's
+`sourceUrls`, and only verified competitors may provide non-empty evidence.
+
+The digest includes deterministic registry-level service evidence coverage,
+district coverage, and evidence gaps in addition to date-specific verified
+observations. An evidence gap means this dataset has zero explicit verified
+evidence for that service; it does not mean there are zero real-world
+competitors. District and service summaries are factual source coverage only.
+
+`buildMarketCoverageSnapshot()` provides a structured Local SEO handoff with
+service IDs, Thai labels, Roi Et keyword labels, verified competitor evidence,
+districts, and supporting source URLs. It does not provide search volume,
+ranking, demand, keyword difficulty, or recommendations.
+
 ## Workspace Structure
 
 ```text
