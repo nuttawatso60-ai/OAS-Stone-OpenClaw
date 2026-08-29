@@ -6,6 +6,10 @@ const {
 } = require('./staff_pricing');
 const { planCustomerResponse, RESPONSE_STATES } = require('./customer_response_planner');
 const {
+  StaffDraftError,
+  StaffResponseDraftStore
+} = require('./staff_response_drafts');
+const {
   StaffKnowledgeError,
   formatMaterials,
   formatQuiz,
@@ -35,6 +39,8 @@ class StaffResponseDraftInputError extends Error {
     this.name = 'StaffResponseDraftInputError';
   }
 }
+
+const DEFAULT_DRAFT_STORE = new StaffResponseDraftStore();
 
 function requiredToken(token) {
   if (typeof token !== 'string' || token.trim() === '') {
@@ -192,7 +198,36 @@ function formatCustomerResponseDraft(text, { planner = planCustomerResponse } = 
   return lines.join('\n');
 }
 
-function staffReply(text) {
+function buildCustomerResponseDraft(text, { planner = planCustomerResponse } = {}) {
+  const request = parseDraftCommand(text);
+  const plan = planner(request);
+  if (!plan || !RESPONSE_STATES.includes(plan.state)) {
+    throw new StaffResponseDraftInputError('ผลลัพธ์ planner ไม่ถูกต้อง');
+  }
+  return { request, plan };
+}
+
+function formatPendingDraft(draft) {
+  return [
+    draft.renderedText,
+    `Draft ID: ${draft.id}`,
+    `หมดอายุ: ${new Date(draft.expiresAt).toISOString()}`,
+    'ใช้ /approve <draft_id> เพื่ออนุมัติพร้อมส่งให้ระบบตรวจสอบซ้ำ'
+  ].join('\n');
+}
+
+function formatApprovalError(error) {
+  const messages = {
+    invalid_draft_id: 'Draft ID ไม่ถูกต้อง',
+    unknown_draft: 'ไม่พบ draft นี้หรือหมดอายุแล้ว',
+    expired_draft: 'draft หมดอายุแล้ว ไม่อนุมัติ',
+    draft_already_approved: 'draft นี้อนุมัติไปแล้ว ไม่ส่งซ้ำ',
+    draft_not_ready: 'draft ที่ไม่ใช่ ready อนุมัติส่งไม่ได้'
+  };
+  return messages[error.code] ?? 'ไม่สามารถอนุมัติ draft ได้';
+}
+
+function staffReply(text, { draftStore = DEFAULT_DRAFT_STORE, planner = planCustomerResponse } = {}) {
   const normalized = typeof text === 'string' ? text.trim() : '';
   // Group and supergroup clients send "/help@botusername", so dispatch on the
   // command name rather than on the raw text.
@@ -204,6 +239,7 @@ function staffReply(text) {
       'คำสั่งที่ใช้ได้:',
       '/price <วัสดุ> <กว้างxสูง> [จำนวน]',
       '/draft <ประเภทงาน> <วัสดุ> <กว้างxสูง> [จำนวน]',
+      '/approve <draft_id>',
       '/materials, /sizes, /train, /quiz, /market',
       'ตัวอย่าง: /price granite 30x20 2',
       'วัสดุ: granite, marble, acrylic, sandstone'
@@ -221,10 +257,28 @@ function staffReply(text) {
 
   if (command === '/draft') {
     try {
-      return formatCustomerResponseDraft(normalized);
+      const { request, plan } = buildCustomerResponseDraft(normalized, { planner });
+      const draft = draftStore.create({ request, plan, renderedText: formatCustomerResponseDraft(normalized, { planner }) });
+      return formatPendingDraft(draft);
     } catch (error) {
       if (error instanceof StaffResponseDraftInputError) return error.message;
       return 'ไม่สามารถจัดทำ draft plan ได้';
+    }
+  }
+
+  if (command === '/approve') {
+    const parts = normalized.split(/\s+/);
+    if (parts.length !== 2) return 'ใช้: /approve <draft_id>';
+    try {
+      const draft = draftStore.approve(parts[1]);
+      return [
+        `อนุมัติ draft ${draft.id} แล้ว`,
+        'สถานะ: approved',
+        'ยังไม่ส่งให้ลูกค้า: ไม่พบ customer target/send primitive ที่ได้รับอนุมัติ'
+      ].join('\n');
+    } catch (error) {
+      if (error instanceof StaffDraftError) return formatApprovalError(error);
+      return 'ไม่สามารถอนุมัติ draft ได้';
     }
   }
 
@@ -256,7 +310,7 @@ function staffReply(text) {
   ].join('\n');
 }
 
-function createStaffTelegramBot({ client, allowedChatIds } = {}) {
+function createStaffTelegramBot({ client, allowedChatIds, draftStore = new StaffResponseDraftStore() } = {}) {
   if (!client || typeof client.getUpdates !== 'function' || typeof client.sendMessage !== 'function') {
     throw new TelegramConfigError('Telegram client is required');
   }
@@ -281,7 +335,7 @@ function createStaffTelegramBot({ client, allowedChatIds } = {}) {
       if (!message || typeof message.text !== 'string' || message.chat?.id === undefined) continue;
       const chatId = String(message.chat.id);
       if (!allowedChatIds.has(chatId)) continue;
-      await client.sendMessage(message.chat.id, staffReply(message.text));
+      await client.sendMessage(message.chat.id, staffReply(message.text, { draftStore }));
     }
 
     return { processed: updates.length, nextOffset };
@@ -299,8 +353,11 @@ module.exports = {
   TelegramApiError,
   TelegramConfigError,
   StaffResponseDraftInputError,
+  StaffDraftError,
+  StaffResponseDraftStore,
   staffReply,
   parseDraftCommand,
+  buildCustomerResponseDraft,
   formatCustomerResponseDraft,
   parseAllowedChatIds,
   createStaffTelegramBot,
