@@ -78,3 +78,15 @@
 | ------- | ----------- | -- |
 | ชินนะ แกะสลักป้ายหิน | DBD, e-GP/data.go.th และเอกสารหน่วยงานท้องถิ่น/โรงเรียนแบบ public/indexed | ❌ ไม่พบผลที่ผูก exact identity + Roi Et; ผลที่พบเป็นบริษัท/บุคคลหรือเอกสารคนละรายการ; คง `pending_verification` |
 | ร้านผ่องแกรนิต | Google Maps Place-ID path, DBD และ public address-anchored/government/procurement search | ❌ ไม่พบ Place ID หรือ source ที่ผูก exact `ผ่องแกรนิต` + ที่อยู่ร้อยเอ็ดแบบ reproducible; ผลที่พบเป็นถนน/รายการอื่น; คง `pending_verification` |
+
+## 2026-08-29 — Roi Et district discovery round 8
+
+การค้นหาแบบเจาะอำเภอครอบคลุม โพนทอง, เสลภูมิ, ธวัชบุรี, จตุรพักตรพิมาน, อาจสามารถ, พนมไพร, หนองพอก และปทุมรัตต์ แต่ไม่พบ candidate ใหม่ที่ผ่านเกณฑ์ exact identifiable business + Roi Et location + explicit stone/granite/marble signage relevance + stable reproducible public source
+
+| Lead | source | ผล |
+| --- | --- | --- |
+| ร้อยเอ็ดแกรนิต | [Thailand Yellow Pages public business profile](https://www.yellowpages.co.th/profile/%E0%B8%A3%E0%B9%89%E0%B8%AD%E0%B8%A2%E0%B9%80%E0%B8%AD%E0%B9%87%E0%B8%94%E0%B9%81%E0%B8%81%E0%B8%A3%E0%B8%99%E0%B8%B4%E0%B8%95-91TjPPqwD) | Grade B / unresolved: ยืนยันชื่อและที่อยู่ 249 ถนนรอบเมือง ตำบลรอบเมือง อำเภอเมืองร้อยเอ็ด จังหวัดร้อยเอ็ด 45000 และหมวดหินแกรนิต แต่ไม่ยืนยันงานป้ายหิน/ป้ายหินอ่อน/ป้ายหินแกรนิต/แกะสลัก จึงไม่เพิ่ม registry |
+| ป้ายโฆษณา สอนศิลป์ ร้อยเอ็ด | Thailand Yellow Pages public business profile | ❌ เป็นธุรกิจป้ายในร้อยเอ็ด แต่บริการที่พบเป็นป้ายทั่วไป เช่น ไวนิล/ตัวอักษรโลหะ/สติ๊กเกอร์/ป้ายไฟ ไม่พบ stone/granite/marble relevance |
+| OAS / โอ.เอ.เอส. / @oas.101 | own-business discovery filter | ❌ ธุรกิจของเราเอง จึงตัดออกจาก competitor discovery |
+
+ผลอื่นนอกจังหวัดหรือผู้ขายระดับประเทศไม่ผ่านเกณฑ์ location/attribution และไม่บันทึกรายการรายตัว
