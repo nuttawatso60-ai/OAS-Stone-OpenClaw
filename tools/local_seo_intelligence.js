@@ -203,9 +203,15 @@ function validateSeoObservations(document, keywordRegistry, competitorRegistry, 
 function loadSeoObservations(
   filePath = DEFAULT_LOCAL_SEO_OBSERVATIONS_PATH,
   keywordRegistry = loadKeywordRegistry(),
-  competitorRegistry = loadCompetitorRegistry()
+  competitorRegistry = loadCompetitorRegistry(),
+  businessProfile
 ) {
-  return validateSeoObservations(readJson(filePath, 'local SEO observations unavailable'), keywordRegistry, competitorRegistry);
+  return validateSeoObservations(
+    readJson(filePath, 'local SEO observations unavailable'),
+    keywordRegistry,
+    competitorRegistry,
+    businessProfile
+  );
 }
 
 function compareObservation(left, right) {
@@ -285,10 +291,16 @@ function buildLocalSeoSnapshot({ keywordRegistry, observations, competitorRegist
   };
 }
 
-function buildConfiguredLocalSeoSnapshot({ keywordsPath = DEFAULT_LOCAL_SEO_KEYWORDS_PATH, observationsPath = DEFAULT_LOCAL_SEO_OBSERVATIONS_PATH, registryPath } = {}) {
+function buildConfiguredLocalSeoSnapshot({
+  keywordsPath = DEFAULT_LOCAL_SEO_KEYWORDS_PATH,
+  observationsPath = DEFAULT_LOCAL_SEO_OBSERVATIONS_PATH,
+  registryPath,
+  businessProfilePath = DEFAULT_BUSINESS_PROFILE_PATH
+} = {}) {
   const keywordRegistry = loadKeywordRegistry(keywordsPath);
   const competitorRegistry = loadCompetitorRegistry(registryPath);
-  const observations = loadSeoObservations(observationsPath, keywordRegistry, competitorRegistry);
+  const businessProfile = loadBusinessProfile(businessProfilePath);
+  const observations = loadSeoObservations(observationsPath, keywordRegistry, competitorRegistry, businessProfile);
   const marketSnapshot = buildMarketCoverageSnapshot(competitorRegistry);
   return buildLocalSeoSnapshot({ keywordRegistry, observations, competitorRegistry, marketSnapshot });
 }

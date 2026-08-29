@@ -1,5 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
 const {
   CONTROLLED_SERVICE_IDS,
   buildMarketCoverageSnapshot,
@@ -253,6 +256,47 @@ test('optional business profile validation supports own_business without changin
     version: 1, ownedUrls: { tiktok: 'https://www.tiktok.com/@different' }
   }));
   assert.doesNotThrow(() => validateSeoObservations(observationDocument([own]), keywordRegistry, competitorRegistry));
+});
+
+test('loadSeoObservations enforces supplied business profile ownership', () => {
+  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'local-seo-'));
+  const observationsPath = path.join(fixtureDirectory, 'observations.json');
+  const own = withoutCompetitorId(observation({
+    resultType: 'own_business',
+    entityName: 'Observed OAS',
+    resultUrl: 'https://not-oas.example/'
+  }));
+  fs.writeFileSync(observationsPath, JSON.stringify(observationDocument([own])));
+
+  assertRejects(() => loadSeoObservations(observationsPath, keywordRegistry, competitorRegistry, businessProfile));
+});
+
+test('loadSeoObservations accepts a valid owned business URL', () => {
+  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'local-seo-'));
+  const observationsPath = path.join(fixtureDirectory, 'observations.json');
+  const own = withoutCompetitorId(observation({
+    resultType: 'own_business',
+    entityName: 'Observed OAS',
+    resultUrl: businessProfile.ownedUrls.tiktok
+  }));
+  fs.writeFileSync(observationsPath, JSON.stringify(observationDocument([own])));
+
+  assert.equal(loadSeoObservations(observationsPath, keywordRegistry, competitorRegistry, businessProfile).length, 1);
+});
+
+test('configured snapshot loads production business profile before observations', () => {
+  const fixtureDirectory = fs.mkdtempSync(path.join(os.tmpdir(), 'local-seo-'));
+  const observationsPath = path.join(fixtureDirectory, 'observations.json');
+  const productionKeywords = loadKeywordRegistry();
+  const own = withoutCompetitorId(observation({
+    keywordId: productionKeywords.keywords[0].id,
+    resultType: 'own_business',
+    entityName: 'Observed OAS',
+    resultUrl: 'https://not-oas.example/'
+  }));
+  fs.writeFileSync(observationsPath, JSON.stringify(observationDocument([own])));
+
+  assertRejects(() => buildConfiguredLocalSeoSnapshot({ observationsPath }));
 });
 
 test('configured loaders keep production observations empty and include market context', () => {
