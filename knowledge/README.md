@@ -162,8 +162,15 @@ committed, and Milestone 1 keeps tracked evidence datasets empty.
 
 `tools/customer_response_planner.js` assembles a deterministic response plan from a
 normalized request. It does not call an LLM, send customer messages, or wire into
-Telegram. The plan separates current pricing, historical quotation evidence,
+Telegram directly. The staff-only Telegram `/draft` command uses the existing
+allowlist and renders the plan for review only; it never auto-sends or forwards a
+customer response. The plan separates current pricing, historical quotation evidence,
 response-style guidance, missing information, conflicts, and evidence pointers.
+
+The draft assistant requires an authorized staff chat through
+`TELEGRAM_ALLOWED_CHAT_IDS`. Unauthorized chats are ignored by the existing staff
+access-control layer. It exposes only concise evidence pointers such as chunk IDs,
+never raw conversations, local file paths, customer profiles, or unnecessary PII.
 
 Authority order is:
 
@@ -185,6 +192,11 @@ needs_information required product/material/dimension information is missing
 conflict          relevant historical evidence conflicts with current calculation
 unsupported       malformed or unsupported request/evidence/pricing condition
 ```
+
+`ready` is a reviewable plan, not an automatic customer reply. `needs_information`
+lists follow-up questions, `conflict` keeps unresolved pricing evidence conflicts
+visible, and `unsupported` fails closed. Current output from the pricing engine is
+authoritative; historical quotations remain informational only.
 
 Unresolved `price_mismatch`, `unknown_material`, `unsupported_dimension`, and
 `insufficient_conditions` findings are surfaced without auto-resolution. Raw and

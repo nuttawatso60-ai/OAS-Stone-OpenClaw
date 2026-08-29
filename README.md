@@ -78,6 +78,14 @@ the existing pricing engine with fixed assumptions: depth 3 mm, standard
 complexity, no rush, no paint, and no installation. Telegram responses expose
 calculated totals only, not pricing coefficients.
 
+Authorized staff can use `/draft stone_sign granite 40x60 [จำนวน]` to request a
+deterministic evidence-backed response plan. This is draft-only: it shows planner
+state, follow-up questions, current Pricing Engine output, conflict summaries,
+response-style guidance, and concise evidence pointers. It never sends or forwards
+anything to a customer, calls an external LLM, or triggers an automatic reply.
+Non-ready states require staff review; historical quotations never override the
+Pricing Engine.
+
 Staff knowledge commands are `/materials`, `/sizes`, `/train`, and `/quiz`.
 Their editable content is in `data\staff_knowledge.json`; standard sizes remain
 explicitly unconfigured until the business provides authoritative guidance.
