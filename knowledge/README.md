@@ -115,3 +115,45 @@ Safety rules:
 - never overwrites output without `--force`
 - validates output against `knowledge/datasets/schemas/processed_conversations.schema.json`
 - does not log conversation content
+
+## Customer chat evidence retrieval
+
+`knowledge/` is the authoritative location for new customer-chat evidence infrastructure.
+`aas-stone-agent/` remains legacy/compatibility-only and receives no new chat-evidence
+features. New raw customer chats stay local under `knowledge/raw/`; they are never
+committed. Run de-identification and manual review before indexing.
+
+Milestone 1 flow:
+
+```text
+RAW local-only
+→ deidentify
+→ processed local-only
+→ index
+→ extracted candidate
+→ human review
+→ approved knowledge
+→ optional owner-approved pricing rule change
+```
+
+The deterministic index is `knowledge/datasets/chat_index.json`. Build it from the
+validated normalization output with:
+
+```bash
+node scripts/build_chat_index.js
+```
+
+The index stores source references, hashes, message ranges, and optional reviewed
+search metadata; it never stores full conversation text. Retrieval APIs are in
+`tools/chat_evidence.js` and use exact terms, controlled tags, dimensions, and dates.
+There are no embeddings, vector DB calls, network calls, or LLM extraction in this
+milestone.
+
+Historical quotations extend `knowledge/datasets/schemas/quotations.schema.json` with
+evidence pointers, `observed_quote` / `candidate_rule` / `exception` classification,
+optional positive `quoted_price_thb`, and evidence-backed centimeter sizes. A historical
+quote is not a current pricing rule. Size frequency is not an official standard size.
+Response examples are evidence-backed examples, not universal response rules.
+Changes to `data/pricing_rules.json` require explicit owner approval; this pipeline
+never changes that file automatically. Raw customer chats and unnecessary PII are not
+committed, and Milestone 1 keeps tracked evidence datasets empty.

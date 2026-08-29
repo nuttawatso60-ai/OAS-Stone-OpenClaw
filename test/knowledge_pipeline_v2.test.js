@@ -31,6 +31,32 @@ const fixtures = {
       candidates: []
     }
   },
+  'chat_index.schema.json': {
+    valid: {
+      schema_version: '1.0',
+      items: [{
+        id: 'chat.txt:0001',
+        source_ref: 'chat.txt',
+        content_sha256: 'a'.repeat(64),
+        message_range: { start: 0, end: 1 },
+        tags: ['price_quote'],
+        search_terms: ['synthetic'],
+        status: 'indexed'
+      }]
+    },
+    invalid: {
+      schema_version: '1.0',
+      items: [{
+        id: 'bad',
+        source_ref: '../raw/chat.txt',
+        content_sha256: 'bad',
+        message_range: { start: -1, end: 0 },
+        tags: [],
+        search_terms: [],
+        status: 'bad'
+      }]
+    }
+  },
   'conversation_outcomes.schema.json': {
     valid: {
       schema_version: '1.0',
@@ -184,6 +210,34 @@ const fixtures = {
           status: 'active'
         }
       ]
+    }
+  },
+  'response_style_examples.schema.json': {
+    valid: {
+      schema_version: '1.0',
+      items: [{
+        id: 'style_price_01',
+        topic: 'price',
+        example_type: 'price_explanation',
+        evidence: {
+          source_ref: 'chat.txt',
+          chunk_id: 'chat.txt:0001',
+          message_range: { start: 0, end: 1 }
+        },
+        sanitized_example: 'synthetic response example',
+        status: 'candidate'
+      }]
+    },
+    invalid: {
+      schema_version: '1.0',
+      items: [{
+        id: 'bad-style',
+        topic: '',
+        example_type: 'unknown',
+        evidence: {},
+        sanitized_example: '',
+        status: 'bad'
+      }]
     }
   },
   'review_decisions.schema.json': {
