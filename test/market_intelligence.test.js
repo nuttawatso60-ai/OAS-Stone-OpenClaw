@@ -96,7 +96,8 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
     'chinna-kae-salak-pai-hin',
     'ran-fa-tak',
     'ran-phong-granite',
-    'pai-hin-kae-salak-kasetwisai'
+    'pai-hin-kae-salak-kasetwisai',
+    'wannasut-art-and-com'
   ];
   for (const id of knownRoiEtIds) {
     assert.ok(competitorsById.has(id), `missing known competitor: ${id}`);
@@ -106,7 +107,8 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   for (const id of [
     'phlanchai-pai-hin',
     'ran-fa-tak',
-    'pai-hin-kae-salak-kasetwisai'
+    'pai-hin-kae-salak-kasetwisai',
+    'wannasut-art-and-com'
   ]) {
     assert.equal(competitorsById.get(id).verificationStatus, 'verified');
     assert.ok(competitorsById.get(id).sourceUrls.length > 0);
@@ -120,10 +122,15 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   assert.deepEqual(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls, [
     'https://www.google.com/maps/search/?api=1&query=MH4P%2BGRV%2C%20Kaset%20Wisai%2C%20Roi%20Et%2C%20Thailand&query_place_id=ChIJqwW3GwCLFzERhWbYlIWQjiI'
   ]);
+  assert.equal(competitorsById.get('wannasut-art-and-com').name, 'วรรณสุทธิ์ อาร์ต แอนด์ คอม');
+  assert.deepEqual(competitorsById.get('wannasut-art-and-com').sourceUrls, [
+    'https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA'
+  ]);
   for (const sourceUrl of competitorsById.get('phlanchai-pai-hin').sourceUrls
     .concat(competitorsById.get('ran-fa-tak').sourceUrls)
     .concat(competitorsById.get('baan-tham-pai').sourceUrls)
-    .concat(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls)) {
+    .concat(competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls)
+    .concat(competitorsById.get('wannasut-art-and-com').sourceUrls)) {
     assert.ok(['http:', 'https:'].includes(new URL(sourceUrl).protocol));
   }
 
@@ -149,6 +156,14 @@ test('Roi Et registry keeps only sufficiently evidenced competitors verified', (
   assert.match(kasetWisaiObservation.summary, /ป้ายหินแกะสลัก/);
   assert.match(kasetWisaiObservation.summary, /MH4P\+GRV ตำบล เกษตรวิสัย อำเภอ เกษตรวิสัย ร้อยเอ็ด 45150/);
   assert.equal(kasetWisaiObservation.sourceUrl, competitorsById.get('pai-hin-kae-salak-kasetwisai').sourceUrls[0]);
+  const wannasutObservation = observations.find(observation => observation.competitorId === 'wannasut-art-and-com');
+  assert.ok(wannasutObservation);
+  assert.match(wannasutObservation.summary, /วรรณสุทธิ์ อาร์ต แอนด์ คอม/);
+  assert.match(wannasutObservation.summary, /อำเภอสุวรรณภูมิ/);
+  assert.match(wannasutObservation.summary, /จังหวัดร้อยเอ็ด 45130/);
+  assert.match(wannasutObservation.summary, /ป้ายหินอ่อน/);
+  assert.match(wannasutObservation.summary, /หินแกรนิต/);
+  assert.equal(wannasutObservation.sourceUrl, competitorsById.get('wannasut-art-and-com').sourceUrls[0]);
   assert.equal(observations.some(observation => observation.competitorId === 'chinna-kae-salak-pai-hin'), false);
   assert.equal(observations.some(observation => observation.competitorId === 'ran-phong-granite'), false);
   assert.ok(observations.some(observation => observation.competitorId === 'phlanchai-pai-hin'));

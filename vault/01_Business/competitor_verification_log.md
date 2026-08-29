@@ -66,6 +66,12 @@
 | ชินนะ แกะสลักป้ายหิน | indexed search for Page ID/name/location and public Facebook URL re-check | exact `Roi Et, Thailand, 45170` location was visible only in authenticated/local Facebook view and not reproduced by indexed/public source; reverted `chinna-kae-salak-pai-hin` to `pending_verification` |
 | ร้านผ่องแกรนิต | public Maps CID/HTML check and exact web search; `ผ่องใสแกรนิต` appeared as false positive | CID `2460950551785954836` did not expose exact public metadata outside local Maps view; reverted `ran-phong-granite` to `pending_verification` and restored display name `ร้านผ่องแกรนิต` |
 
+## 2026-08-29 — Roi Et competitor discovery round 7
+
+| คู่แข่ง | source | ผล |
+| ------- | ------ | -- |
+| วรรณสุทธิ์ อาร์ต แอนด์ คอม | [Thailand Yellow Pages public business profile](https://www.yellowpages.co.th/profile/%E0%B8%A7%E0%B8%A3%E0%B8%A3%E0%B8%93%E0%B8%AA%E0%B8%B8%E0%B8%97%E0%B8%98%E0%B8%B4%E0%B9%8C-%E0%B8%AD%E0%B8%B2%E0%B8%A3%E0%B9%8C%E0%B8%95-%E0%B9%81%E0%B8%AD%E0%B8%99%E0%B8%94%E0%B9%8C-%E0%B8%84%E0%B8%AD%E0%B8%A1-93T3PT9QA) | ✅ exact name + Suwannaphum/Roi Et address + ป้ายหินอ่อน/หินแกรนิต service; added as verified competitor |
+
 ## 2026-08-29 — public-source verification round 6
 
 | คู่แข่ง | ช่องทางใหม่ | ผล |
