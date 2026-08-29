@@ -194,14 +194,10 @@ test('staff knowledge commands support Telegram group suffixes', () => {
 test('market command is internal, deterministic, and supports group suffixes', () => {
   const market = staffReply('/market');
   assert.equal(staffReply('/market@oas_stone_shop_bot'), market);
+  assert.match(market, /Market Intelligence รายวัน — \d{4}-\d{2}-\d{2}/);
   assert.match(market, /Verified observations/);
-  assert.match(market, /พลาญชัยป้ายหิน/);
-  assert.match(market, /ร้านบ้านทำป้ายแกะสลัก/);
-  assert.match(market, /ป้ายหินแกะสลัก/);
   assert.match(market, /Competitors pending verification/);
-  assert.match(market, /ชินนะ แกะสลักป้ายหิน/);
-  assert.match(market, /ร้านผ่องแกรนิต/);
-  assert.match(market, /Source: https:\/\/www\.oic\.go\.th\//);
+  assert.match(market, /Interpretation/);
   assert.doesNotMatch(market, /base_per_cm2|cnc_rate_per_minute/);
 });
 
