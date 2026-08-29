@@ -86,6 +86,13 @@ anything to a customer, calls an external LLM, or triggers an automatic reply.
 Non-ready states require staff review; historical quotations never override the
 Pricing Engine.
 
+The draft lifecycle is `/draft` -> `/approve <draft_id>`. Both actions are
+available only from the existing `TELEGRAM_ALLOWED_CHAT_IDS` allowlist. Pending
+drafts are in-memory and expire after 15 minutes; approval is one-time and
+duplicate approval is rejected. Only `ready` drafts can be approved. Customer
+send remains intentionally disabled until an approved customer target/send
+primitive exists, so approval cannot create an outbound customer message.
+
 Staff knowledge commands are `/materials`, `/sizes`, `/train`, and `/quiz`.
 Their editable content is in `data\staff_knowledge.json`; standard sizes remain
 explicitly unconfigured until the business provides authoritative guidance.
