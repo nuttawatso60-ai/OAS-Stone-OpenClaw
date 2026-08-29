@@ -108,6 +108,37 @@ service IDs, Thai labels, Roi Et keyword labels, verified competitor evidence,
 districts, and supporting source URLs. It does not provide search volume,
 ranking, demand, keyword difficulty, or recommendations.
 
+### Local SEO Intelligence
+
+Local SEO is layered on top of Market Intelligence without changing its
+behavior. Layer A is source-backed competitor/service evidence from
+`buildMarketCoverageSnapshot()`. Layer B is point-in-time search-surface
+observations in `data\local_seo_observations.json`. Layer C is future SEO
+interpretation and recommendations, which is not implemented.
+
+The initial curated keyword registry is in `data\local_seo_keywords.json`:
+`stone-sign-roi-et` (`ป้ายหิน ร้อยเอ็ด`), `marble-sign-roi-et`
+(`ป้ายหินอ่อน ร้อยเอ็ด`), `granite-sign-roi-et` (`ป้ายหินแกรนิต ร้อยเอ็ด`),
+`stone-sign-engraving-roi-et` (`แกะสลักป้ายหิน ร้อยเอ็ด`), and
+`stone-engraving-roi-et` (`แกะสลักหิน ร้อยเอ็ด`). `หินแกรนิต ร้อยเอ็ด` is
+excluded from this initial stone-sign-focused target set because it has broader
+material intent; this does not claim it has low value.
+
+`verifiedCompetitorEvidenceCount` means verified Market Intelligence records
+with explicit source-backed evidence for the linked service. It is not the
+number of competitors in a SERP, the real market competitor count, search
+volume, ranking, or search competition.
+
+SEO observations record historical facts such as query, surface, result/entity,
+optional position, location context, and timestamp. Results can vary by
+location, personalization, device, and history; `locationLabel` records the
+intended observation context and is not guaranteed geo-neutral. An optional
+SEO `sourceUrl` is a separate HTTP(S) artifact and is not required: a live SERP
+may be point-in-time or personalized without a durable independently
+reproducible URL. Production SEO observations are intentionally empty. This
+foundation has no live search, scraper, browser/API integration, scoring,
+recommendations, or content generation.
+
 ## Workspace Structure
 
 ```text

@@ -1,0 +1,35 @@
+{
+  "version": 1,
+  "keywords": [
+    {
+      "id": "stone-sign-roi-et",
+      "query": "ป้ายหิน ร้อยเอ็ด",
+      "intent": "commercial_local",
+      "marketServiceId": "stone_sign"
+    },
+    {
+      "id": "marble-sign-roi-et",
+      "query": "ป้ายหินอ่อน ร้อยเอ็ด",
+      "intent": "commercial_local",
+      "marketServiceId": "marble_sign"
+    },
+    {
+      "id": "granite-sign-roi-et",
+      "query": "ป้ายหินแกรนิต ร้อยเอ็ด",
+      "intent": "commercial_local",
+      "marketServiceId": "granite_sign"
+    },
+    {
+      "id": "stone-sign-engraving-roi-et",
+      "query": "แกะสลักป้ายหิน ร้อยเอ็ด",
+      "intent": "service_local",
+      "marketServiceId": "stone_engraving"
+    },
+    {
+      "id": "stone-engraving-roi-et",
+      "query": "แกะสลักหิน ร้อยเอ็ด",
+      "intent": "service_local",
+      "marketServiceId": "stone_engraving"
+    }
+  ]
+}
