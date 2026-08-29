@@ -173,6 +173,7 @@ module.exports = {
   findQuotationExamples,
   findResponseStyleExamples,
   loadChatIndex,
+  loadRules,
   loadQuotationExamples,
   loadResponseStyleExamples,
   searchChatChunks
