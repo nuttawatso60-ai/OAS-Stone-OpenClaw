@@ -139,6 +139,12 @@ reproducible URL. Production SEO observations are intentionally empty. This
 foundation has no live search, scraper, browser/API integration, scoring,
 recommendations, or content generation.
 
+`data\business_profile.json` stores owner-supplied public ownership anchors
+separately from the competitor registry. The anchors support conservative
+`own_business` identification by URL; they do not independently verify public
+business metadata. No canonical business name is required or selected yet,
+and URL matching never uses fuzzy business-name inference.
+
 ## Workspace Structure
 
 ```text
