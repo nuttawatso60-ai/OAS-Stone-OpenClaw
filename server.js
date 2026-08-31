@@ -87,6 +87,13 @@ function buildPriceRequest(body) {
   if (body.quantity !== undefined && !Number.isSafeInteger(body.quantity)) {
     throw new PriceInputError('quantity must be a positive integer');
   }
+  // The engine coerces with Number(), so a boolean would silently price as 1 cm.
+  // The documented contract is a number, so require one here.
+  for (const key of ['widthCm', 'heightCm', 'depthMm']) {
+    if (body[key] !== undefined && (typeof body[key] !== 'number' || !Number.isFinite(body[key]))) {
+      throw new PriceInputError(`${key} must be a finite number`);
+    }
+  }
 
   return {
     id: 'PRICE',
@@ -142,14 +149,27 @@ class PriceInputError extends Error {
 }
 
 // Strips the internal "job PRICE." prefix the engine uses and refuses to pass
-// through anything that looks like a filesystem path or a stack trace.
+// through anything that looks like a filesystem path or a stack trace. Engine
+// validation messages embed the offending value, so the result is also capped
+// to stop a large request body from being reflected back verbatim.
+const MAX_ERROR_MESSAGE_LENGTH = 200;
+
 function safeMessage(error) {
   const raw = typeof error?.message === 'string' ? error.message : '';
   const message = raw.replace(/^job PRICE\./, '').trim();
   if (message === '' || /[\r\n\\/]/.test(message)) {
     return 'invalid pricing input';
   }
-  return message;
+  return message.length > MAX_ERROR_MESSAGE_LENGTH
+    ? `${message.slice(0, MAX_ERROR_MESSAGE_LENGTH)}…`
+    : message;
+}
+
+// The engine reports input problems with a plain Error. Anything else — a
+// TypeError from structurally broken rules, for example — is a server fault,
+// not a client mistake, and must not be reported as a 400 or leak its message.
+function isEngineValidationError(error) {
+  return error instanceof Error && error.constructor === Error;
 }
 
 function createApp({ jobStore } = {}) {
@@ -187,10 +207,19 @@ function createApp({ jobStore } = {}) {
     }
 
     try {
-      return res.json({ currency: 'THB', result: calculateJobPrice(job, rules) });
+      const result = calculateJobPrice(job, rules);
+      // A structurally incomplete rules file can produce NaN instead of
+      // throwing. Never hand the browser a price that is not a real number.
+      if (!Number.isFinite(result.total)) {
+        return res.status(500).json({ error: 'Pricing is temporarily unavailable' });
+      }
+      return res.json({ currency: 'THB', result });
     } catch (error) {
       // Engine validation messages are safe field-level text, but they are
       // normalised here so no path or stack ever reaches the client.
+      if (!isEngineValidationError(error)) {
+        return res.status(500).json({ error: 'Pricing is temporarily unavailable' });
+      }
       return res.status(400).json({ error: safeMessage(error) });
     }
   });

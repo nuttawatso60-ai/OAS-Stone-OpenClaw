@@ -191,6 +191,68 @@ test('unsupported fields are rejected rather than silently ignored', async () =>
   assert.match((await response.json()).error, /unsupported field/);
 });
 
+test('boolean dimensions are rejected instead of silently coerced', async () => {
+  for (const field of ['widthCm', 'heightCm', 'depthMm']) {
+    const response = await priceRequest(validPrice({ [field]: true }));
+    assert.equal(response.status, 400, field);
+    assert.match((await response.json()).error, /must be a finite number/);
+  }
+});
+
+test('string dimensions are rejected instead of silently coerced', async () => {
+  const response = await priceRequest(validPrice({ widthCm: '20' }));
+  assert.equal(response.status, 400);
+});
+
+test('reflected error messages are capped so a large body is not echoed back', async () => {
+  const response = await priceRequest(validPrice({ material: 'x'.repeat(4000) }));
+  assert.equal(response.status, 400);
+  const body = await response.json();
+  assert.ok(body.error.length <= 210, `error message was ${body.error.length} characters`);
+});
+
+test('a structurally broken rules file returns 500, never a 400 or a NaN price', async () => {
+  // Exercised through createApp so the real endpoint wiring is under test.
+  const { createApp } = require('../server');
+  const fs = require('node:fs');
+  const originalReadFileSync = fs.readFileSync;
+  const brokenApp = createApp();
+  const brokenServer = http.createServer(brokenApp);
+  await new Promise(resolve => brokenServer.listen(0, '127.0.0.1', resolve));
+  const brokenUrl = `http://127.0.0.1:${brokenServer.address().port}/api/price`;
+
+  const call = async () => {
+    const response = await fetch(brokenUrl, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(validPrice())
+    });
+    return { status: response.status, body: await response.json() };
+  };
+
+  try {
+    // Missing materials entirely: the engine throws a TypeError.
+    fs.readFileSync = (file, ...rest) => String(file).endsWith('pricing_rules.json')
+      ? '{}'
+      : originalReadFileSync(file, ...rest);
+    const missing = await call();
+    assert.equal(missing.status, 500);
+    assert.equal(missing.body.error, 'Pricing is temporarily unavailable');
+    assert.doesNotMatch(missing.body.error, /Cannot read properties|undefined/);
+
+    // Present but incomplete: the engine returns NaN instead of throwing.
+    fs.readFileSync = (file, ...rest) => String(file).endsWith('pricing_rules.json')
+      ? JSON.stringify({ materials: { granite: { base_per_cm2: 1 } }, complexity_multipliers: { standard: 1 } })
+      : originalReadFileSync(file, ...rest);
+    const incomplete = await call();
+    assert.equal(incomplete.status, 500);
+    assert.equal(incomplete.body.error, 'Pricing is temporarily unavailable');
+  } finally {
+    fs.readFileSync = originalReadFileSync;
+    await new Promise((resolve, reject) => brokenServer.close(error => error ? reject(error) : resolve()));
+  }
+});
+
 test('error messages never expose filesystem paths', async () => {
   for (const body of [validPrice({ material: 'nope' }), validPrice({ widthCm: -1 }), {}]) {
     const text = await (await priceRequest(body)).text();

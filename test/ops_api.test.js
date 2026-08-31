@@ -71,14 +71,3 @@ test('production listener defaults to loopback and binds the configured host', (
   assert.match(source, /const HOST = process\.env\.HOST \|\| '127\.0\.0\.1';/);
   assert.match(source, /app\.listen\(PORT, HOST,/);
 });
-
-test('the default host resolves to loopback when HOST is unset', () => {
-  const previous = process.env.HOST;
-  delete process.env.HOST;
-  try {
-    assert.equal(process.env.HOST || '127.0.0.1', '127.0.0.1');
-  } finally {
-    if (previous === undefined) delete process.env.HOST;
-    else process.env.HOST = previous;
-  }
-});
