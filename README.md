@@ -89,22 +89,62 @@ Telegram:
 - Local SEO intelligence
 - read-only internal staff interface
 
-Standalone Pricing App:
+Pricing Web App:
 
-- future UI for dimensions/material/options/quantity
-- uses the existing deterministic Pricing Engine
-- not implemented in this task
+- standalone shop pricing calculator at `/pricing.html`
+- responsive browser UI for desktop, tablet, and phone
+- uses the deterministic JS Pricing Engine server-side
+- no customer information required
+- no Telegram dependency
 
 Customer messaging:
 
 - not part of Telegram scope
 - no automatic or approved outbound customer messaging in this bot
 
+## Pricing Web App
+
+`/pricing.html` is a standalone responsive pricing calculator for our own shop
+pricing. It asks only for the fields the pricing engine actually prices:
+material, width, height, depth, quantity, complexity, and the optional rush,
+paint, and install switches. It never asks for a customer name, phone number, or
+any Telegram information, and it does no arithmetic of its own: every number it
+shows comes from the server-side engine.
+
+```powershell
+npm run dev
+```
+
+The server listens on `127.0.0.1:3000` by default, so it is reachable only from
+this machine. To use it from a phone or tablet on the same network, opt in
+explicitly:
+
+```powershell
+$env:HOST = "0.0.0.0"
+npm run dev
+```
+
+**Warning:** LAN mode has no authentication. Anyone on the network can open the
+calculator. Only enable it on a trusted private network.
+
+API used by the page:
+
+- `GET /api/pricing/options` returns the valid material and complexity keys plus
+  the depth threshold. It never returns pricing coefficients, rates, fees, or
+  filesystem paths.
+- `POST /api/price` maps a request onto `calculateJobPrice(job, rules)` and
+  returns `{ currency, result }`. Validation problems return HTTP 400 with a
+  safe message; unexpected failures return HTTP 500 with a generic message.
+
+`POST /api/quotes/preview` is a separate, older workflow that still requires
+customer name and phone and produces a quote number. It is unchanged.
+
 ## Pricing Engine
 
 `tools\pricing_engine.js` and `data\pricing_rules.json` remain the
-authoritative deterministic pricing implementation. They are intentionally kept
-for the future standalone pricing app and are not exposed through Telegram.
+authoritative deterministic pricing implementation. Both the Pricing Web App and
+the quotation endpoint call the same engine; neither duplicates a formula. They
+are not exposed through Telegram.
 
 ```powershell
 npm run price
