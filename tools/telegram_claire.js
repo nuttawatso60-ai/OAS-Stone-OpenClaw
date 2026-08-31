@@ -42,6 +42,10 @@ class StaffResponseDraftInputError extends Error {
 
 const DEFAULT_DRAFT_STORE = new StaffResponseDraftStore();
 
+function parseCustomerSendEnabled(value) {
+  return value === 'true';
+}
+
 function requiredToken(token) {
   if (typeof token !== 'string' || token.trim() === '') {
     throw new TelegramConfigError('TELEGRAM_BOT_TOKEN is required');
@@ -264,7 +268,11 @@ function formatApprovalError(error) {
   return messages[error.code] ?? 'ไม่สามารถอนุมัติ draft ได้';
 }
 
-function staffReply(text, { draftStore = DEFAULT_DRAFT_STORE, planner = planCustomerResponse } = {}) {
+function staffReply(text, {
+  draftStore = DEFAULT_DRAFT_STORE,
+  planner = planCustomerResponse,
+  customerSendEnabled = false
+} = {}) {
   const normalized = typeof text === 'string' ? text.trim() : '';
   // Group and supergroup clients send "/help@botusername", so dispatch on the
   // command name rather than on the raw text.
@@ -276,7 +284,9 @@ function staffReply(text, { draftStore = DEFAULT_DRAFT_STORE, planner = planCust
       'คำสั่งที่ใช้ได้:',
       '/price <วัสดุ> <กว้างxสูง> [จำนวน]',
       '/draft <ประเภทงาน> <วัสดุ> <กว้างxสูง> [จำนวน]',
+      '/target <draft_id> <customer_chat_id>',
       '/approve <draft_id>',
+      '/sendstatus',
       '/materials, /sizes, /train, /quiz, /market',
       'ตัวอย่าง: /price granite 30x20 2',
       'วัสดุ: granite, marble, acrylic, sandstone'
@@ -328,6 +338,14 @@ function staffReply(text, { draftStore = DEFAULT_DRAFT_STORE, planner = planCust
     return formatApprovalError(new StaffDraftError('send_unavailable'));
   }
 
+  if (command === '/sendstatus') {
+    return [
+      `Customer send: ${customerSendEnabled ? 'enabled' : 'disabled (DRY RUN)'}`,
+      `Pending drafts: ${typeof draftStore.getPendingCount === 'function' ? draftStore.getPendingCount() : 0}`,
+      `Draft TTL: ${draftStore.ttlMs ?? 0} ms`
+    ].join('\n');
+  }
+
   if (['/materials', '/sizes', '/train', '/quiz'].includes(command)) {
     try {
       if (command === '/materials') return formatMaterials();
@@ -356,7 +374,12 @@ function staffReply(text, { draftStore = DEFAULT_DRAFT_STORE, planner = planCust
   ].join('\n');
 }
 
-function createStaffTelegramBot({ client, allowedChatIds, draftStore = new StaffResponseDraftStore() } = {}) {
+function createStaffTelegramBot({
+  client,
+  allowedChatIds,
+  draftStore = new StaffResponseDraftStore(),
+  customerSendEnabled = false
+} = {}) {
   if (!client || typeof client.getUpdates !== 'function' || typeof client.sendMessage !== 'function') {
     throw new TelegramConfigError('Telegram client is required');
   }
@@ -383,7 +406,8 @@ function createStaffTelegramBot({ client, allowedChatIds, draftStore = new Staff
       if (!allowedChatIds.has(chatId)) continue;
       await client.sendMessage(message.chat.id, await staffReplyAsync(message.text, {
         draftStore,
-        sendCustomerMessage: (targetChatId, text) => sendCustomerTelegramMessage(client, targetChatId, text)
+        sendCustomerMessage: (targetChatId, text) => sendCustomerTelegramMessage(client, targetChatId, text),
+        customerSendEnabled
       }));
     }
 
@@ -398,14 +422,27 @@ function createStaffTelegramBot({ client, allowedChatIds, draftStore = new Staff
   };
 }
 
-async function staffReplyAsync(text, { draftStore = DEFAULT_DRAFT_STORE, sendCustomerMessage } = {}) {
+async function staffReplyAsync(text, {
+  draftStore = DEFAULT_DRAFT_STORE,
+  sendCustomerMessage,
+  customerSendEnabled = false
+} = {}) {
   const normalized = typeof text === 'string' ? text.trim() : '';
   const command = commandName(normalized.split(/\s+/, 1)[0]);
   if (command !== '/approve') return staffReply(normalized, { draftStore });
   const parts = normalized.split(/\s+/);
   if (parts.length !== 2) return 'ใช้: /approve <draft_id>';
   try {
-    const draft = await draftStore.approveAndSend(parts[1], sendCustomerMessage);
+    const draft = await draftStore.approveAndSend(parts[1], sendCustomerMessage, {
+      sendEnabled: customerSendEnabled
+    });
+    if (!customerSendEnabled) {
+      return [
+        `ตรวจสอบและอนุมัติ draft ${draft.id} แล้ว`,
+        'สถานะ: dry_run',
+        'Customer send: disabled; ไม่เรียก Telegram customer send และ draft ยังเป็น pending'
+      ].join('\n');
+    }
     return [
       `อนุมัติและส่ง draft ${draft.id} แล้ว`,
       `Target: ${draft.targetChatId}`,
@@ -426,6 +463,7 @@ module.exports = {
   staffReply,
   parseDraftCommand,
   buildCustomerResponseDraft,
+  parseCustomerSendEnabled,
   formatCustomerResponseDraft,
   formatCustomerMessage,
   parseTargetCommand,

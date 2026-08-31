@@ -100,6 +100,20 @@ send failures are blocked to avoid obvious duplicates. Customer replies are sent
 only through the existing Telegram client after all gates pass. There is no
 automatic customer reply, background retry, or scheduled send.
 
+Customer outbound sending is disabled by default. Set
+`CUSTOMER_SEND_ENABLED=true` exactly to enable it; unset, `false`, malformed,
+whitespace-padded, or differently-cased values remain disabled. `/sendstatus`
+shows only enabled/disabled mode, pending count, and draft TTL. In disabled mode
+`/approve` performs all checks, makes zero customer-send API calls, reports
+`DRY RUN`, and leaves the draft pending for a later explicit enabled approval.
+Pending drafts are in-memory only and are lost on process restart; no stale draft
+can be replayed after restart.
+
+Safe rollout: deploy with send disabled; verify `/draft`; bind only a fake/test
+target with `/target`; verify dry-run `/approve`; enable the flag only after
+validation; then test with an authorized internal/test Telegram chat before any
+real customer.
+
 Staff knowledge commands are `/materials`, `/sizes`, `/train`, and `/quiz`.
 Their editable content is in `data\staff_knowledge.json`; standard sizes remain
 explicitly unconfigured until the business provides authoritative guidance.
