@@ -329,12 +329,23 @@ function createApp({ jobStore } = {}) {
     }
   });
 
+  // Nothing may reach Express's default error handler: outside production it
+  // renders the exception as HTML including the stack trace and absolute
+  // filesystem paths. Every error that arrives here leaves as safe JSON.
   app.use((error, req, res, next) => {
     if (error instanceof SyntaxError && Object.hasOwn(error, 'body')) {
       return res.status(400).json({ error: 'Invalid JSON request body' });
     }
 
-    return next(error);
+    if (error?.type === 'entity.too.large' || error?.status === 413 || error?.statusCode === 413) {
+      return res.status(413).json({ error: 'Request body is too large' });
+    }
+
+    if (res.headersSent) {
+      return next(error);
+    }
+
+    return res.status(500).json({ error: 'Internal server error' });
   });
 
   return app;

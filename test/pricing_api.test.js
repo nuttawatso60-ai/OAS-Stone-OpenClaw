@@ -176,13 +176,72 @@ test('malformed JSON returns 400 without a stack trace', async () => {
   assert.equal(body.error.includes('at '), false);
 });
 
-test('oversized bodies are rejected by the 16kb limit', async () => {
+// Anything that reaches Express's default error handler is rendered as HTML
+// with a stack trace and absolute filesystem paths, so every error response is
+// checked for leakage, not just for its status code.
+const LEAK_PATTERNS = [
+  /PayloadTooLargeError/,
+  /Error:/,
+  /node_modules/,
+  /[A-Za-z]:\\/,
+  /OAS-Stone-OpenClaw/,
+  /at readStream/,
+  /\bat [A-Za-z_$][\w$]*\s*\(/,
+  /<html/i,
+  /<pre>/i
+];
+
+function assertNoLeak(text, label) {
+  for (const pattern of LEAK_PATTERNS) {
+    assert.doesNotMatch(text, pattern, `${label} leaked ${pattern}`);
+  }
+}
+
+test('oversized bodies are rejected by the 16kb limit as safe JSON', async () => {
   const response = await priceRequest(
     JSON.stringify({ material: 'granite', widthCm: 20, heightCm: 30, note: 'x'.repeat(64 * 1024) }),
     { raw: true }
   );
-  assert.ok(response.status >= 400, `expected a client error, got ${response.status}`);
-  assert.notEqual(response.status, 200);
+  assert.equal(response.status, 413);
+  assert.match(response.headers.get('content-type') ?? '', /application\/json/);
+  const text = await response.text();
+  assert.deepEqual(JSON.parse(text), { error: 'Request body is too large' });
+  assertNoLeak(text, 'oversized body response');
+});
+
+test('the oversized-body response never echoes the payload back', async () => {
+  const marker = 'MARKER-do-not-reflect';
+  const response = await priceRequest(
+    JSON.stringify({ material: 'granite', widthCm: 20, heightCm: 30, note: `${marker}${'x'.repeat(64 * 1024)}` }),
+    { raw: true }
+  );
+  assert.equal(response.status, 413);
+  const text = await response.text();
+  assert.equal(text.includes(marker), false, 'oversized response reflected the payload');
+});
+
+test('malformed JSON stays a safe 400 with no stack or path', async () => {
+  const response = await priceRequest('{"material":', { raw: true });
+  assert.equal(response.status, 400);
+  assert.match(response.headers.get('content-type') ?? '', /application\/json/);
+  const text = await response.text();
+  assert.deepEqual(JSON.parse(text), { error: 'Invalid JSON request body' });
+  assertNoLeak(text, 'malformed JSON response');
+});
+
+test('an unexpected middleware failure becomes a generic JSON 500, not an HTML stack', async () => {
+  // A corrupt gzip body makes body-parser fail with something that is neither a
+  // JSON syntax error nor a size error, so it exercises the final fallback.
+  const response = await fetch(`${baseUrl}/api/price`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'content-encoding': 'gzip' },
+    body: 'this-is-not-gzip-data'
+  });
+  assert.equal(response.status, 500);
+  assert.match(response.headers.get('content-type') ?? '', /application\/json/);
+  const text = await response.text();
+  assert.deepEqual(JSON.parse(text), { error: 'Internal server error' });
+  assertNoLeak(text, 'unexpected middleware failure response');
 });
 
 test('unsupported fields are rejected rather than silently ignored', async () => {
