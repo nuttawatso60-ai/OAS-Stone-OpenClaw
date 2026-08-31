@@ -3,8 +3,7 @@ const {
   TelegramConfigError,
   createStaffTelegramBot,
   createTelegramClient,
-  parseAllowedChatIds,
-  parseCustomerSendEnabled
+  parseAllowedChatIds
 } = require('./tools/telegram_claire');
 
 const POLL_TIMEOUT_SECONDS = 30;
@@ -17,8 +16,7 @@ function sleep(ms) {
 async function main() {
   const client = createTelegramClient({ token: process.env.TELEGRAM_BOT_TOKEN });
   const allowedChatIds = parseAllowedChatIds(process.env.TELEGRAM_ALLOWED_CHAT_IDS);
-  const customerSendEnabled = parseCustomerSendEnabled(process.env.CUSTOMER_SEND_ENABLED);
-  const bot = createStaffTelegramBot({ client, allowedChatIds, customerSendEnabled });
+  const bot = createStaffTelegramBot({ client, allowedChatIds });
   let stopped = false;
 
   const stop = () => {
@@ -28,8 +26,8 @@ async function main() {
   process.once('SIGINT', stop);
   process.once('SIGTERM', stop);
 
-  console.log('OAS Stone Staff Assistant started');
-  console.log(`Customer send mode: ${customerSendEnabled ? 'enabled' : 'disabled (DRY RUN)'}`);
+  console.log('OAS Stone Market Intelligence bot started');
+  console.log('Scope: internal market/competitor intelligence, read-only');
 
   while (!stopped) {
     try {
@@ -44,7 +42,7 @@ async function main() {
     }
   }
 
-  console.log('OAS Stone Staff Assistant stopped');
+  console.log('OAS Stone Market Intelligence bot stopped');
 }
 
 if (require.main === module) {
@@ -52,7 +50,7 @@ if (require.main === module) {
     if (error instanceof TelegramConfigError) {
       console.error(error.message);
     } else {
-      console.error('OAS Stone Staff Assistant failed');
+      console.error('OAS Stone Market Intelligence bot failed');
     }
     process.exitCode = 1;
   });
