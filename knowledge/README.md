@@ -185,6 +185,16 @@ an explicit staff retry; ambiguous failures block retry to reduce duplicate-send
 risk. `/draft` and `/target` never send, and there is no automatic customer reply,
 background retry, or scheduled send.
 
+Customer send is disabled by default. Only the exact environment value
+`CUSTOMER_SEND_ENABLED=true` enables outbound sending; unset, false, malformed,
+whitespace-padded, and differently-cased values are disabled. `/sendstatus` is
+staff-only and reports mode, pending count, and TTL without targets or content.
+Dry-run approval validates all send gates, makes no Telegram customer-send call,
+and leaves the draft pending. Pending drafts are in-memory and disappear on
+process restart. Roll out by validating `/draft`, `/target` with a fake target,
+and dry-run `/approve` before enabling and testing only an authorized internal
+test chat.
+
 Authority order is:
 
 ```text

@@ -7,6 +7,7 @@ const {
 } = require('../tools/staff_response_drafts');
 const {
   createStaffTelegramBot,
+  parseCustomerSendEnabled,
   staffReply,
   staffReplyAsync
 } = require('../tools/telegram_claire');
@@ -179,7 +180,8 @@ test('authorized ready draft sends the immutable customer payload exactly once',
   const sends = [];
   const first = await staffReplyAsync(`/approve ${draft.id}`, {
     draftStore: store,
-    sendCustomerMessage: async (target, text) => sends.push({ target, text })
+    sendCustomerMessage: async (target, text) => sends.push({ target, text }),
+    customerSendEnabled: true
   });
   assert.match(first, /สถานะ: sent/);
   assert.equal(sends.length, 1);
@@ -188,7 +190,8 @@ test('authorized ready draft sends the immutable customer payload exactly once',
   assert.match(sends[0].text, /ราคารวมประมาณ/);
   const second = await staffReplyAsync(`/approve ${draft.id}`, {
     draftStore: store,
-    sendCustomerMessage: async (...args) => sends.push(args)
+    sendCustomerMessage: async (...args) => sends.push(args),
+    customerSendEnabled: true
   });
   assert.match(second, /ส่งแล้ว ไม่ส่งซ้ำ/);
   assert.equal(sends.length, 1);
@@ -205,6 +208,7 @@ test('authorized Telegram approval uses the existing client for one customer sen
   const bot = createStaffTelegramBot({
     allowedChatIds: new Set(['99']),
     draftStore: store,
+    customerSendEnabled: true,
     client: {
       async getUpdates() { return updateBatch; },
       async sendMessage(target, text) { calls.push({ target, text }); }
@@ -248,16 +252,16 @@ test('clear send failure permits deliberate retry, ambiguous failure blocks retr
     attempts += 1;
     if (attempts === 1) throw Object.assign(new Error('clear failure'), { retryable: true });
   };
-  assert.match(await staffReplyAsync(`/approve ${draft.id}`, { draftStore: store, sendCustomerMessage: retryable }), /retry ได้/);
+  assert.match(await staffReplyAsync(`/approve ${draft.id}`, { draftStore: store, sendCustomerMessage: retryable, customerSendEnabled: true }), /retry ได้/);
   assert.equal(draft.status, 'pending');
-  assert.match(await staffReplyAsync(`/approve ${draft.id}`, { draftStore: store, sendCustomerMessage: retryable }), /สถานะ: sent/);
+  assert.match(await staffReplyAsync(`/approve ${draft.id}`, { draftStore: store, sendCustomerMessage: retryable, customerSendEnabled: true }), /สถานะ: sent/);
   assert.equal(attempts, 2);
 
   const uncertain = createDraft(store);
   staffReply(`/target ${uncertain.id} -100126`, { draftStore: store });
   const failing = async () => { throw new Error('ambiguous failure'); };
-  assert.match(await staffReplyAsync(`/approve ${uncertain.id}`, { draftStore: store, sendCustomerMessage: failing }), /ไม่แน่ชัด/);
-  assert.match(await staffReplyAsync(`/approve ${uncertain.id}`, { draftStore: store, sendCustomerMessage: retryable }), /ระงับการ retry/);
+  assert.match(await staffReplyAsync(`/approve ${uncertain.id}`, { draftStore: store, sendCustomerMessage: failing, customerSendEnabled: true }), /ไม่แน่ชัด/);
+  assert.match(await staffReplyAsync(`/approve ${uncertain.id}`, { draftStore: store, sendCustomerMessage: retryable, customerSendEnabled: true }), /ระงับการ retry/);
   assert.equal(attempts, 2);
 });
 
@@ -268,8 +272,72 @@ test('payload fingerprint rejects changes after draft creation', async () => {
   draft.customerText += ' changed';
   const reply = await staffReplyAsync(`/approve ${draft.id}`, {
     draftStore: store,
-    sendCustomerMessage: async () => assert.fail('changed payload must not send')
+    sendCustomerMessage: async () => assert.fail('changed payload must not send'),
+    customerSendEnabled: true
   });
   assert.match(reply, /เปลี่ยนแปลง/);
   assert.equal(draft.status, 'pending');
+});
+
+test('customer send configuration is enabled only by exact true', () => {
+  for (const value of [undefined, '', 'false', 'TRUE', ' true', 'true ', '1', 'yes']) {
+    assert.equal(parseCustomerSendEnabled(value), false, String(value));
+  }
+  assert.equal(parseCustomerSendEnabled('true'), true);
+});
+
+test('complete authorized lifecycle stays dry-run by default and remains eligible', async () => {
+  const store = new StaffResponseDraftStore({ now: () => 1000 });
+  const draft = createDraft(store);
+  staffReply(`/target ${draft.id} -100129`, { draftStore: store });
+  const dryRunCalls = [];
+  const dryRun = await staffReplyAsync(`/approve ${draft.id}`, {
+    draftStore: store,
+    sendCustomerMessage: async (...args) => dryRunCalls.push(args)
+  });
+  assert.match(dryRun, /DRY RUN|dry_run/);
+  assert.equal(dryRunCalls.length, 0);
+  assert.equal(draft.status, 'pending');
+  const realSend = [];
+  await staffReplyAsync(`/approve ${draft.id}`, {
+    draftStore: store,
+    customerSendEnabled: true,
+    sendCustomerMessage: async (...args) => realSend.push(args)
+  });
+  assert.equal(realSend.length, 1);
+  assert.equal(draft.status, 'sent');
+});
+
+test('send status is staff-only and contains no target, customer content, or secrets', async () => {
+  const store = new StaffResponseDraftStore({ now: () => 1000 });
+  const draft = createDraft(store);
+  const sent = [];
+  const bot = createStaffTelegramBot({
+    allowedChatIds: new Set(['99']),
+    draftStore: store,
+    customerSendEnabled: true,
+    client: {
+      async getUpdates() {
+        return [{ update_id: 1, message: { chat: { id: 1000 }, text: '/sendstatus' } }];
+      },
+      async sendMessage(...args) { sent.push(args); }
+    }
+  });
+  await bot.pollOnce();
+  assert.deepEqual(sent, []);
+  const status = staffReply('/sendstatus', { draftStore: store, customerSendEnabled: false });
+  assert.match(status, /disabled \(DRY RUN\)/);
+  assert.match(status, /Pending drafts: 1/);
+  assert.match(status, /Draft TTL/);
+  assert.doesNotMatch(status, new RegExp(`${draft.targetChatId ?? '100129'}|ราคารวม|token|secret`, 'i'));
+});
+
+test('expired cleanup removes drafts and a new store has no restart state', () => {
+  let now = 1000;
+  const store = new StaffResponseDraftStore({ now: () => now, ttlMs: 10 });
+  createDraft(store);
+  now = 1010;
+  assert.equal(store.cleanupExpired(), 1);
+  assert.equal(store.getPendingCount(), 0);
+  assert.equal(new StaffResponseDraftStore({ now: () => now }).getPendingCount(), 0);
 });

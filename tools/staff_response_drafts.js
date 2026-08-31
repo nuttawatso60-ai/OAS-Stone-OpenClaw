@@ -81,12 +81,16 @@ class StaffResponseDraftStore {
     return draft;
   }
 
-  async approveAndSend(id, sendCustomerMessage) {
+  async approveAndSend(id, sendCustomerMessage, { sendEnabled = false } = {}) {
     const draft = this._eligibleDraft(id);
     if (!draft.targetChatId) throw new StaffDraftError('target_required');
     if (!draft.customerText || !draft.payloadHash) throw new StaffDraftError('payload_unavailable');
     const currentHash = crypto.createHash('sha256').update(draft.customerText).digest('hex');
     if (currentHash !== draft.payloadHash) throw new StaffDraftError('payload_changed');
+    if (!sendEnabled) {
+      draft.sendStatus = 'dry_run';
+      return draft;
+    }
     if (typeof sendCustomerMessage !== 'function') throw new StaffDraftError('send_unavailable');
     draft.status = 'sending';
     try {
@@ -142,6 +146,23 @@ class StaffResponseDraftStore {
 
   get(id) {
     return this.pending.get(id);
+  }
+
+  cleanupExpired() {
+    const now = this.now();
+    let removed = 0;
+    for (const [id, draft] of this.pending) {
+      if (now >= draft.expiresAt) {
+        this.pending.delete(id);
+        removed += 1;
+      }
+    }
+    return removed;
+  }
+
+  getPendingCount() {
+    this.cleanupExpired();
+    return [...this.pending.values()].filter(draft => draft.status === 'pending').length;
   }
 }
 
