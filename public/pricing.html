@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>อ.เอ.เอส แกะสลัก | คำนวณราคา</title>
+  <link rel="stylesheet" href="/pricing.css">
+</head>
+<body>
+  <main class="page">
+    <header class="page-head no-print">
+      <h1>คำนวณราคา</h1>
+      <p class="sub">ราคาประเมินจากขนาดและตัวเลือกงาน</p>
+    </header>
+
+    <form id="price-form" class="card no-print" novalidate>
+      <div class="fields">
+        <label class="field">
+          <span>วัสดุ</span>
+          <select name="material" id="material" required>
+            <option value="">กำลังโหลด…</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>ความกว้าง (ซม.)</span>
+          <input name="widthCm" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="เช่น 20" required>
+        </label>
+
+        <label class="field">
+          <span>ความสูง (ซม.)</span>
+          <input name="heightCm" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="เช่น 30" required>
+        </label>
+
+        <label class="field">
+          <span>ความหนา (มม.)</span>
+          <input name="depthMm" type="number" inputmode="decimal" min="0" step="0.1" value="3" required>
+          <small id="depth-hint" class="hint"></small>
+        </label>
+
+        <label class="field">
+          <span>จำนวน</span>
+          <input name="quantity" type="number" inputmode="numeric" min="1" step="1" value="1" required>
+        </label>
+
+        <label class="field">
+          <span>ความซับซ้อน</span>
+          <select name="complexity" id="complexity" required>
+            <option value="">กำลังโหลด…</option>
+          </select>
+        </label>
+      </div>
+
+      <details class="advanced">
+        <summary>ตัวเลือกเพิ่มเติม</summary>
+        <div class="switches">
+          <label class="switch"><input name="rush" type="checkbox"> <span>งานด่วน</span></label>
+          <label class="switch"><input name="paint" type="checkbox"> <span>ทาสี</span></label>
+          <label class="switch"><input name="install" type="checkbox"> <span>ติดตั้ง</span></label>
+        </div>
+      </details>
+
+      <button type="submit" class="primary">คำนวณราคา</button>
+      <p id="error" class="error" role="alert" aria-live="assertive"></p>
+    </form>
+
+    <section id="result" class="card result hidden" aria-live="polite"></section>
+  </main>
+  <script src="/pricing.js"></script>
+</body>
+</html>

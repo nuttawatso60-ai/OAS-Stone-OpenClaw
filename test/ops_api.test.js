@@ -63,7 +63,11 @@ test('OPS methods other than GET do not create write endpoints', async () => {
   }
 });
 
-test('production listener is loopback-only', () => {
+// The bind address is configurable so a phone or tablet on the same network can
+// reach the pricing app, but the default must stay loopback-only: LAN exposure
+// has to be an explicit opt-in, never something a plain `npm run dev` does.
+test('production listener defaults to loopback and binds the configured host', () => {
   const source = fs.readFileSync(require.resolve('../server'), 'utf8');
-  assert.match(source, /app\.listen\(PORT, '127\.0\.0\.1'/);
+  assert.match(source, /const HOST = process\.env\.HOST \|\| '127\.0\.0\.1';/);
+  assert.match(source, /app\.listen\(PORT, HOST,/);
 });

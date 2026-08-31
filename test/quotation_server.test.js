@@ -118,7 +118,15 @@ test('identical requests produce the same pricing result', async () => {
     secondResponse.json()
   ]);
 
-  assert.deepEqual(first.result, second.result);
+  // result.id is the quote number, which embeds a second-level timestamp, so two
+  // concurrent requests can legitimately land on different seconds. Compare the
+  // pricing values and assert the id shape separately instead of relying on the
+  // clock. Quote number semantics are unchanged.
+  const { id: firstId, ...firstPricing } = first.result;
+  const { id: secondId, ...secondPricing } = second.result;
+  assert.deepEqual(firstPricing, secondPricing);
+  assert.match(firstId, /^QT-\d{8}-\d{6}$/);
+  assert.match(secondId, /^QT-\d{8}-\d{6}$/);
 });
 
 test('unsupported HTTP methods return 404', async () => {

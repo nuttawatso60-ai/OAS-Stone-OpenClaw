@@ -1,0 +1,121 @@
+/* Standalone pricing calculator styles. Mobile-first; the quotation page keeps
+   its own styles.css so the two UIs stay independent. */
+:root {
+  --ink: #20252b;
+  --muted: #59636e;
+  --line: #dce2e8;
+  --brand: #1d6b58;
+  --brand-dark: #155040;
+  --head: #233b57;
+  --danger: #b3261e;
+  --bg: #f3f5f7;
+  --card: #fff;
+  font-family: "Noto Sans Thai", "Sarabun", "Leelawadee UI", "Segoe UI", Tahoma, system-ui, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; }
+
+.page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 20px 16px 48px;
+}
+
+.page-head h1 { margin: 0 0 4px; color: var(--head); font-size: 1.5rem; }
+.page-head .sub { margin: 0 0 20px; color: var(--muted); }
+
+.card {
+  background: var(--card);
+  border-radius: 12px;
+  box-shadow: 0 2px 12px #18202a18;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+/* Single column on phones; the tablet breakpoint opens a second column. */
+.fields { display: grid; grid-template-columns: 1fr; gap: 16px; }
+
+.field { display: grid; gap: 6px; }
+.field > span { font-weight: 600; }
+
+/* 16px keeps iOS Safari from zooming on focus; 44px min-height keeps the
+   controls comfortable on touch devices. */
+input, select, textarea, button {
+  font: inherit;
+  font-size: 16px;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid #bcc7d2;
+  border-radius: 8px;
+  background: #fff;
+  color: inherit;
+  width: 100%;
+}
+
+.hint { color: var(--muted); font-weight: 400; font-size: 0.85rem; }
+
+.advanced { margin: 20px 0 4px; border-top: 1px solid var(--line); padding-top: 12px; }
+.advanced > summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--head);
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.switches { display: grid; gap: 4px; padding-top: 8px; }
+.switch { display: flex; align-items: center; gap: 10px; min-height: 44px; font-weight: 600; }
+.switch input { width: 22px; height: 22px; min-height: 22px; flex: 0 0 auto; }
+
+button.primary {
+  background: var(--brand);
+  color: #fff;
+  border: 0;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 16px;
+}
+button.primary:hover { background: var(--brand-dark); }
+
+.error { color: var(--danger); margin: 12px 0 0; min-height: 1.2em; font-weight: 600; }
+.hidden { display: none; }
+
+.total { text-align: center; padding: 4px 0 16px; border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.total .label { color: var(--muted); margin: 0 0 4px; }
+.total .amount { color: var(--brand); font-size: 2rem; font-weight: 800; line-height: 1.2; }
+.total .currency { color: var(--muted); font-size: 0.95rem; }
+
+.meta { display: grid; grid-template-columns: 1fr; gap: 6px; color: var(--muted); margin-bottom: 16px; }
+
+table { width: 100%; border-collapse: collapse; }
+th, td { padding: 10px 4px; border-bottom: 1px solid var(--line); text-align: left; }
+td:last-child, th:last-child { text-align: right; white-space: nowrap; }
+tfoot th { font-size: 1.1rem; color: var(--brand); border-bottom: 0; }
+tr.zero td { color: var(--muted); }
+
+.disclaimer { color: var(--muted); margin: 16px 0 0; font-size: 0.9rem; }
+.print-button { margin-top: 16px; background: #fff; color: var(--head); border: 1px solid #bcc7d2; font-weight: 700; cursor: pointer; }
+
+@media (min-width: 768px) {
+  .page { padding: 32px 24px 64px; }
+  .fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .switches { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .meta { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .card { padding: 28px; }
+}
+
+@media (min-width: 1024px) {
+  /* Deliberately capped: a pricing form does not benefit from full width. */
+  .page { max-width: 860px; }
+  .total .amount { font-size: 2.4rem; }
+}
+
+@media print {
+  :root, body { background: #fff; }
+  .page { max-width: none; padding: 0; }
+  .no-print, .print-button { display: none !important; }
+  .card { box-shadow: none; padding: 0; }
+}
