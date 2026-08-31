@@ -1,3 +1,8 @@
+// These tests cover tools/staff_response_drafts.js as a standalone module only.
+// The draft/target/approve lifecycle is no longer wired into the Telegram
+// runtime: Telegram is internal market/competitor intelligence only. The module
+// is kept unwired rather than deleted so it stays available to a future
+// non-Telegram surface.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
@@ -5,12 +10,6 @@ const {
   StaffDraftError,
   StaffResponseDraftStore
 } = require('../tools/staff_response_drafts');
-const {
-  createStaffTelegramBot,
-  parseCustomerSendEnabled,
-  staffReply,
-  staffReplyAsync
-} = require('../tools/telegram_claire');
 
 function readyPlan(overrides = {}) {
   return {
@@ -42,38 +41,31 @@ function createDraft(store, plan = readyPlan()) {
   });
 }
 
-test('/draft creates pending state and never invokes a customer sender', () => {
-  const store = new StaffResponseDraftStore({ now: () => 1000 });
-  const reply = staffReply('/draft stone_sign granite 40x60', {
-    draftStore: store,
-    planner: () => readyPlan()
-  });
-  const id = reply.match(/Draft ID: (draft_[a-f0-9]{16})/)?.[1];
-  assert.ok(id);
-  assert.equal(store.get(id).status, 'pending');
-  assert.doesNotMatch(reply, /sendMessage|customer target/i);
+test('the draft module is not reachable from the Telegram module surface', () => {
+  const telegram = require('../tools/telegram_claire');
+  for (const removed of [
+    'staffReplyAsync',
+    'parseDraftCommand',
+    'buildCustomerResponseDraft',
+    'formatCustomerResponseDraft',
+    'formatCustomerMessage',
+    'parseTargetCommand',
+    'sendCustomerTelegramMessage',
+    'parseCustomerSendEnabled',
+    'StaffResponseDraftStore',
+    'StaffDraftError'
+  ]) {
+    assert.equal(telegram[removed], undefined, `telegram_claire still exports ${removed}`);
+  }
 });
 
-test('unauthorized chat cannot create or approve a pending draft', async () => {
+test('a new draft starts pending and records no send state', () => {
   const store = new StaffResponseDraftStore({ now: () => 1000 });
   const draft = createDraft(store);
-  const sent = [];
-  const bot = createStaffTelegramBot({
-    client: {
-      async getUpdates() {
-        return [
-          { update_id: 1, message: { chat: { id: 1000 }, text: `/target ${draft.id} -100123` } },
-          { update_id: 2, message: { chat: { id: 1000 }, text: `/approve ${draft.id}` } }
-        ];
-      },
-      async sendMessage(...args) { sent.push(args); }
-    },
-    allowedChatIds: new Set(['99']),
-    draftStore: store
-  });
-  await bot.pollOnce();
-  assert.equal(store.get(draft.id).status, 'pending');
-  assert.deepEqual(sent, []);
+  assert.equal(draft.status, 'pending');
+  assert.equal(draft.sendStatus, undefined);
+  assert.equal(draft.targetChatId, undefined);
+  assert.equal(store.getPendingCount(), 1);
 });
 
 test('ready draft can be approved once and repeated approval is idempotently rejected', () => {
@@ -85,15 +77,6 @@ test('ready draft can be approved once and repeated approval is idempotently rej
   assert.throws(() => store.approve(draft.id), error =>
     error instanceof StaffDraftError && error.code === 'draft_already_approved'
   );
-});
-
-test('approval cannot send when customer routing is unavailable', async () => {
-  const store = new StaffResponseDraftStore({ now: () => 1000 });
-  const draft = createDraft(store);
-  const reply = await staffReplyAsync(`/approve ${draft.id}`, { draftStore: store });
-  assert.equal(draft.status, 'pending');
-  assert.equal(draft.sendStatus, undefined);
-  assert.match(reply, /ต้อง bind customer target/);
 });
 
 test('expired, malformed, and unknown draft IDs fail closed', () => {
@@ -112,18 +95,22 @@ test('expired, malformed, and unknown draft IDs fail closed', () => {
   );
 });
 
-test('non-ready states cannot be approved or sent', () => {
+test('non-ready states cannot be approved or sent', async () => {
   for (const state of ['needs_information', 'conflict', 'unsupported']) {
     const store = new StaffResponseDraftStore({ now: () => 1000 });
     const draft = createDraft(store, readyPlan({ state }));
     assert.throws(() => store.approve(draft.id), error =>
       error instanceof StaffDraftError && error.code === 'draft_not_ready'
     );
+    await assert.rejects(
+      () => store.approveAndSend(draft.id, async () => assert.fail('must not send')),
+      error => error instanceof StaffDraftError && error.code === 'draft_not_ready'
+    );
     assert.equal(draft.status, 'pending');
   }
 });
 
-test('approval preserves pricing authority and evidence pointers without exposing PII', () => {
+test('approval preserves pricing authority and evidence pointers', () => {
   const store = new StaffResponseDraftStore({ now: () => 1000 });
   const draft = createDraft(store, readyPlan({
     evidencePointers: [{ chunk_id: 'chat.txt:0008', source_ref: 'raw/customer-phone.txt' }]
@@ -132,9 +119,6 @@ test('approval preserves pricing authority and evidence pointers without exposin
   assert.equal(draft.plan.pricing.authority, 'pricing_engine');
   assert.equal(draft.plan.pricing.current.total, 1234.5);
   assert.equal(draft.plan.evidencePointers[0].chunk_id, 'chat.txt:0008');
-  const reply = staffReply(`/approve ${draft.id}`, { draftStore: store });
-  assert.match(reply, /customer send primitive ไม่พร้อม/);
-  assert.doesNotMatch(reply, /raw\/customer-phone|080000|secret/i);
 });
 
 test('draft IDs are deterministic for the same normalized request and plan', () => {
@@ -143,23 +127,30 @@ test('draft IDs are deterministic for the same normalized request and plan', () 
   assert.equal(first.id, second.id);
 });
 
-test('/target binds a numeric customer ID without sending', () => {
+test('bindTarget stores a normalized numeric ID without sending', () => {
   const store = new StaffResponseDraftStore({ now: () => 1000 });
   const draft = createDraft(store);
-  const reply = staffReply(`/target ${draft.id} -100123`, { draftStore: store });
-  assert.match(reply, /Target bound: -100123/);
-  assert.equal(draft.targetChatId, '-100123');
-  assert.equal(draft.status, 'pending');
+  const bound = store.bindTarget(draft.id, '-100123');
+  assert.equal(bound.targetChatId, '-100123');
+  assert.equal(bound.status, 'pending');
 });
 
-test('malformed target, unknown target draft, and rebinding sent draft fail closed', () => {
+test('malformed target, unknown draft, and non-pending draft fail closed', () => {
   const store = new StaffResponseDraftStore({ now: () => 1000 });
   const draft = createDraft(store);
-  assert.match(staffReply(`/target ${draft.id} abc`, { draftStore: store }), /customer chat ID/);
-  assert.match(staffReply('/target draft_0000000000000000 -100123', { draftStore: store }), /ไม่พบ draft/);
-  draft.targetChatId = '-100123';
+  assert.throws(() => store.bindTarget(draft.id, 'abc'), error =>
+    error instanceof StaffDraftError && error.code === 'invalid_target'
+  );
+  assert.throws(() => store.bindTarget(draft.id, '0'), error =>
+    error instanceof StaffDraftError && error.code === 'invalid_target'
+  );
+  assert.throws(() => store.bindTarget('draft_0000000000000000', '-100123'), error =>
+    error instanceof StaffDraftError && error.code === 'unknown_draft'
+  );
   draft.status = 'sent';
-  assert.match(staffReply(`/target ${draft.id} -100456`, { draftStore: store }), /bind target ไม่ได้/);
+  assert.throws(() => store.bindTarget(draft.id, '-100456'), error =>
+    error instanceof StaffDraftError && error.code === 'draft_not_pending'
+  );
 });
 
 test('expired draft cannot bind a target', () => {
@@ -167,169 +158,43 @@ test('expired draft cannot bind a target', () => {
   const store = new StaffResponseDraftStore({ now: () => now, ttlMs: 10 });
   const draft = createDraft(store);
   now = 1010;
-  assert.match(staffReply(`/target ${draft.id} -100123`, { draftStore: store }), /หมดอายุ/);
+  assert.throws(() => store.bindTarget(draft.id, '-100123'), error =>
+    error instanceof StaffDraftError && error.code === 'expired_draft'
+  );
   assert.equal(draft.status, 'expired');
 });
 
-test('authorized ready draft sends the immutable customer payload exactly once', async () => {
-  const store = new StaffResponseDraftStore({ now: () => 1000 });
-  const draft = createDraft(store, readyPlan({
-    evidencePointers: [{ chunk_id: 'chat.txt:0009', source_ref: 'private/chat.txt' }]
-  }));
-  staffReply(`/target ${draft.id} -100123`, { draftStore: store });
-  const sends = [];
-  const first = await staffReplyAsync(`/approve ${draft.id}`, {
-    draftStore: store,
-    sendCustomerMessage: async (target, text) => sends.push({ target, text }),
-    customerSendEnabled: true
-  });
-  assert.match(first, /สถานะ: sent/);
-  assert.equal(sends.length, 1);
-  assert.equal(sends[0].target, '-100123');
-  assert.doesNotMatch(sends[0].text, /chat\.txt|private|Pricing Engine|evidence|conflict|draft_/i);
-  assert.match(sends[0].text, /ราคารวมประมาณ/);
-  const second = await staffReplyAsync(`/approve ${draft.id}`, {
-    draftStore: store,
-    sendCustomerMessage: async (...args) => sends.push(args),
-    customerSendEnabled: true
-  });
-  assert.match(second, /ส่งแล้ว ไม่ส่งซ้ำ/);
-  assert.equal(sends.length, 1);
-});
-
-test('authorized Telegram approval uses the existing client for one customer send', async () => {
+test('approveAndSend requires a bound target and makes no call without one', async () => {
   const store = new StaffResponseDraftStore({ now: () => 1000 });
   const draft = createDraft(store);
-  const calls = [];
-  let updateBatch = [
-    { update_id: 1, message: { chat: { id: 99 }, text: `/target ${draft.id} -100128` } },
-    { update_id: 2, message: { chat: { id: 99 }, text: `/approve ${draft.id}` } }
-  ];
-  const bot = createStaffTelegramBot({
-    allowedChatIds: new Set(['99']),
-    draftStore: store,
-    customerSendEnabled: true,
-    client: {
-      async getUpdates() { return updateBatch; },
-      async sendMessage(target, text) { calls.push({ target, text }); }
-    }
-  });
-  await bot.pollOnce();
-  const customerCalls = calls.filter(call => call.target === '-100128');
-  assert.equal(customerCalls.length, 1);
-  assert.match(customerCalls[0].text, /ราคารวมประมาณ/);
-  assert.equal(store.get(draft.id).status, 'sent');
-  updateBatch = [{ update_id: 3, message: { chat: { id: 99 }, text: `/approve ${draft.id}` } }];
-  await bot.pollOnce();
-  assert.equal(calls.filter(call => call.target === '-100128').length, 1);
-});
-
-test('target is required before approval and non-ready drafts cannot send', async () => {
-  const store = new StaffResponseDraftStore({ now: () => 1000 });
-  const draft = createDraft(store);
-  const noTarget = await staffReplyAsync(`/approve ${draft.id}`, {
-    draftStore: store,
-    sendCustomerMessage: async () => assert.fail('sender must not run')
-  });
-  assert.match(noTarget, /bind customer target/);
-  for (const state of ['needs_information', 'conflict', 'unsupported']) {
-    const nonReady = createDraft(store, readyPlan({ state }));
-    staffReply(`/target ${nonReady.id} -100124`, { draftStore: store });
-    const reply = await staffReplyAsync(`/approve ${nonReady.id}`, {
-      draftStore: store,
-      sendCustomerMessage: async () => assert.fail('sender must not run')
-    });
-    assert.match(reply, /ไม่ใช่ ready/);
-  }
-});
-
-test('clear send failure permits deliberate retry, ambiguous failure blocks retry', async () => {
-  const store = new StaffResponseDraftStore({ now: () => 1000 });
-  const draft = createDraft(store);
-  staffReply(`/target ${draft.id} -100125`, { draftStore: store });
-  let attempts = 0;
-  const retryable = async () => {
-    attempts += 1;
-    if (attempts === 1) throw Object.assign(new Error('clear failure'), { retryable: true });
-  };
-  assert.match(await staffReplyAsync(`/approve ${draft.id}`, { draftStore: store, sendCustomerMessage: retryable, customerSendEnabled: true }), /retry ได้/);
+  await assert.rejects(
+    () => store.approveAndSend(draft.id, async () => assert.fail('must not send'), { sendEnabled: true }),
+    error => error instanceof StaffDraftError && error.code === 'target_required'
+  );
   assert.equal(draft.status, 'pending');
-  assert.match(await staffReplyAsync(`/approve ${draft.id}`, { draftStore: store, sendCustomerMessage: retryable, customerSendEnabled: true }), /สถานะ: sent/);
-  assert.equal(attempts, 2);
+});
 
-  const uncertain = createDraft(store);
-  staffReply(`/target ${uncertain.id} -100126`, { draftStore: store });
-  const failing = async () => { throw new Error('ambiguous failure'); };
-  assert.match(await staffReplyAsync(`/approve ${uncertain.id}`, { draftStore: store, sendCustomerMessage: failing, customerSendEnabled: true }), /ไม่แน่ชัด/);
-  assert.match(await staffReplyAsync(`/approve ${uncertain.id}`, { draftStore: store, sendCustomerMessage: retryable, customerSendEnabled: true }), /ระงับการ retry/);
-  assert.equal(attempts, 2);
+test('approveAndSend defaults to dry run and makes zero send calls', async () => {
+  const store = new StaffResponseDraftStore({ now: () => 1000 });
+  const draft = createDraft(store);
+  store.bindTarget(draft.id, '-100129');
+  const calls = [];
+  const result = await store.approveAndSend(draft.id, async (...args) => calls.push(args));
+  assert.equal(result.sendStatus, 'dry_run');
+  assert.equal(calls.length, 0);
+  assert.equal(draft.status, 'pending');
 });
 
 test('payload fingerprint rejects changes after draft creation', async () => {
   const store = new StaffResponseDraftStore({ now: () => 1000 });
   const draft = createDraft(store);
-  staffReply(`/target ${draft.id} -100127`, { draftStore: store });
+  store.bindTarget(draft.id, '-100127');
   draft.customerText += ' changed';
-  const reply = await staffReplyAsync(`/approve ${draft.id}`, {
-    draftStore: store,
-    sendCustomerMessage: async () => assert.fail('changed payload must not send'),
-    customerSendEnabled: true
-  });
-  assert.match(reply, /เปลี่ยนแปลง/);
+  await assert.rejects(
+    () => store.approveAndSend(draft.id, async () => assert.fail('changed payload must not send'), { sendEnabled: true }),
+    error => error instanceof StaffDraftError && error.code === 'payload_changed'
+  );
   assert.equal(draft.status, 'pending');
-});
-
-test('customer send configuration is enabled only by exact true', () => {
-  for (const value of [undefined, '', 'false', 'TRUE', ' true', 'true ', '1', 'yes']) {
-    assert.equal(parseCustomerSendEnabled(value), false, String(value));
-  }
-  assert.equal(parseCustomerSendEnabled('true'), true);
-});
-
-test('complete authorized lifecycle stays dry-run by default and remains eligible', async () => {
-  const store = new StaffResponseDraftStore({ now: () => 1000 });
-  const draft = createDraft(store);
-  staffReply(`/target ${draft.id} -100129`, { draftStore: store });
-  const dryRunCalls = [];
-  const dryRun = await staffReplyAsync(`/approve ${draft.id}`, {
-    draftStore: store,
-    sendCustomerMessage: async (...args) => dryRunCalls.push(args)
-  });
-  assert.match(dryRun, /DRY RUN|dry_run/);
-  assert.equal(dryRunCalls.length, 0);
-  assert.equal(draft.status, 'pending');
-  const realSend = [];
-  await staffReplyAsync(`/approve ${draft.id}`, {
-    draftStore: store,
-    customerSendEnabled: true,
-    sendCustomerMessage: async (...args) => realSend.push(args)
-  });
-  assert.equal(realSend.length, 1);
-  assert.equal(draft.status, 'sent');
-});
-
-test('send status is staff-only and contains no target, customer content, or secrets', async () => {
-  const store = new StaffResponseDraftStore({ now: () => 1000 });
-  const draft = createDraft(store);
-  const sent = [];
-  const bot = createStaffTelegramBot({
-    allowedChatIds: new Set(['99']),
-    draftStore: store,
-    customerSendEnabled: true,
-    client: {
-      async getUpdates() {
-        return [{ update_id: 1, message: { chat: { id: 1000 }, text: '/sendstatus' } }];
-      },
-      async sendMessage(...args) { sent.push(args); }
-    }
-  });
-  await bot.pollOnce();
-  assert.deepEqual(sent, []);
-  const status = staffReply('/sendstatus', { draftStore: store, customerSendEnabled: false });
-  assert.match(status, /disabled \(DRY RUN\)/);
-  assert.match(status, /Pending drafts: 1/);
-  assert.match(status, /Draft TTL/);
-  assert.doesNotMatch(status, new RegExp(`${draft.targetChatId ?? '100129'}|ราคารวม|token|secret`, 'i'));
 });
 
 test('expired cleanup removes drafts and a new store has no restart state', () => {

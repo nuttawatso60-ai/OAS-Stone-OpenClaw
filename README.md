@@ -50,12 +50,20 @@ data\legacy_python_pricing_rules.json
 data\legacy_python_sample_jobs.json
 ```
 
-## Telegram Staff Assistant
+## Telegram Market Intelligence Bot
 
-Telegram is internal staff tooling only. It is not a Claire customer-intake channel.
+Telegram is the internal market / competitor intelligence interface. It is
+read-only staff tooling: it does not price jobs, does not draft or approve
+customer responses, and never sends a message to a customer. Pricing lives in
+the standalone pricing engine for the future pricing application.
+
 The bot fails closed unless both `TELEGRAM_BOT_TOKEN` and a valid
 `TELEGRAM_ALLOWED_CHAT_IDS` comma-separated allowlist are set. Unauthorized chats
-are ignored without a reply.
+are ignored without a reply. Replies are only ever sent back to the originating
+allowlisted staff chat.
+
+Supported commands are `/market` and `/help`. Anything else returns a short
+pointer to `/help`.
 
 Run locally in PowerShell:
 
@@ -72,51 +80,38 @@ $env:TELEGRAM_BOT_TOKEN = "<bot-token>"
 npm run telegram:chat-ids
 ```
 
-The internal `/price` command supports `/price granite 30x20`, an optional
-quantity, and Thai material aliases. It uses `data\pricing_rules.json` through
-the existing pricing engine with fixed assumptions: depth 3 mm, standard
-complexity, no rush, no paint, and no installation. Telegram responses expose
-calculated totals only, not pricing coefficients.
+## Product boundaries
 
-Authorized staff can use `/draft stone_sign granite 40x60 [จำนวน]` to request a
-deterministic evidence-backed response plan. This is draft-only: it shows planner
-state, follow-up questions, current Pricing Engine output, conflict summaries,
-response-style guidance, and concise evidence pointers. It never sends or forwards
-anything to a customer, calls an external LLM, or triggers an automatic reply.
-Non-ready states require staff review; historical quotations never override the
-Pricing Engine.
+Telegram:
 
-The draft lifecycle is `/draft` -> `/target <draft_id> <customer_chat_id>` ->
-`/approve <draft_id>`. All actions are available only from the existing
-`TELEGRAM_ALLOWED_CHAT_IDS` allowlist. Targets are explicit numeric Telegram chat
-IDs and are never inferred from messages, evidence, names, or quotations. Pending
-drafts are in-memory and expire after 15 minutes. Only `ready` drafts with an
-explicit target can be sent; approval is one-time and duplicate approval is
-rejected. The prepared customer payload is fingerprinted at draft creation and
-is sent exactly once. `/draft` and `/target` never send.
+- competitor intelligence
+- market observations
+- Local SEO intelligence
+- read-only internal staff interface
 
-Clear send failures remain retryable by a deliberate `/approve` retry; ambiguous
-send failures are blocked to avoid obvious duplicates. Customer replies are sent
-only through the existing Telegram client after all gates pass. There is no
-automatic customer reply, background retry, or scheduled send.
+Standalone Pricing App:
 
-Customer outbound sending is disabled by default. Set
-`CUSTOMER_SEND_ENABLED=true` exactly to enable it; unset, `false`, malformed,
-whitespace-padded, or differently-cased values remain disabled. `/sendstatus`
-shows only enabled/disabled mode, pending count, and draft TTL. In disabled mode
-`/approve` performs all checks, makes zero customer-send API calls, reports
-`DRY RUN`, and leaves the draft pending for a later explicit enabled approval.
-Pending drafts are in-memory only and are lost on process restart; no stale draft
-can be replayed after restart.
+- future UI for dimensions/material/options/quantity
+- uses the existing deterministic Pricing Engine
+- not implemented in this task
 
-Safe rollout: deploy with send disabled; verify `/draft`; bind only a fake/test
-target with `/target`; verify dry-run `/approve`; enable the flag only after
-validation; then test with an authorized internal/test Telegram chat before any
-real customer.
+Customer messaging:
 
-Staff knowledge commands are `/materials`, `/sizes`, `/train`, and `/quiz`.
-Their editable content is in `data\staff_knowledge.json`; standard sizes remain
-explicitly unconfigured until the business provides authoritative guidance.
+- not part of Telegram scope
+- no automatic or approved outbound customer messaging in this bot
+
+## Pricing Engine
+
+`tools\pricing_engine.js` and `data\pricing_rules.json` remain the
+authoritative deterministic pricing implementation. They are intentionally kept
+for the future standalone pricing app and are not exposed through Telegram.
+
+```powershell
+npm run price
+```
+
+Staff knowledge content in `data\staff_knowledge.json` is likewise retained as
+data; it is no longer surfaced through Telegram commands.
 
 Market Intelligence is internal-only and has no scraping framework yet. The
 `/market` command reads `data\competitors.json` and

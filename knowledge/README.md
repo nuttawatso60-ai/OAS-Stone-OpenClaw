@@ -162,38 +162,19 @@ committed, and Milestone 1 keeps tracked evidence datasets empty.
 
 `tools/customer_response_planner.js` assembles a deterministic response plan from a
 normalized request. It does not call an LLM, send customer messages, or wire into
-Telegram directly. The staff-only Telegram `/draft` command uses the existing
-allowlist and renders the plan for review only; it never auto-sends or forwards a
-customer response. The plan separates current pricing, historical quotation evidence,
+Telegram. The plan separates current pricing, historical quotation evidence,
 response-style guidance, missing information, conflicts, and evidence pointers.
 
-The draft assistant requires an authorized staff chat through
-`TELEGRAM_ALLOWED_CHAT_IDS`. Unauthorized chats are ignored by the existing staff
-access-control layer. It exposes only concise evidence pointers such as chunk IDs,
-never raw conversations, local file paths, customer profiles, or unnecessary PII.
+Scope note: Telegram is the internal market / competitor intelligence interface
+only. The planner and the draft/target/approve store in
+`tools/staff_response_drafts.js` are retained as standalone modules and are not
+wired into any Telegram command. There is no Telegram pricing command, no
+customer-response draft command, no customer target binding, no approval
+lifecycle, no outbound customer send, and no `CUSTOMER_SEND_ENABLED` flag.
+Customer messaging is out of scope for this bot.
 
-The staff lifecycle is `/draft` -> `/target <draft_id> <customer_chat_id>` ->
-`/approve <draft_id>`. Targets are explicit numeric Telegram chat IDs and are
-never inferred from conversations, evidence, names, or quotations. Pending drafts
-are held in memory for 15 minutes, then fail closed. Only `ready` drafts with a
-bound target can send. `needs_information`, `conflict`, and `unsupported` drafts
-cannot be sent.
-
-The prepared customer payload is fingerprinted at draft creation and sent exactly
-once through the existing Telegram client. Clear send failures remain retryable by
-an explicit staff retry; ambiguous failures block retry to reduce duplicate-send
-risk. `/draft` and `/target` never send, and there is no automatic customer reply,
-background retry, or scheduled send.
-
-Customer send is disabled by default. Only the exact environment value
-`CUSTOMER_SEND_ENABLED=true` enables outbound sending; unset, false, malformed,
-whitespace-padded, and differently-cased values are disabled. `/sendstatus` is
-staff-only and reports mode, pending count, and TTL without targets or content.
-Dry-run approval validates all send gates, makes no Telegram customer-send call,
-and leaves the draft pending. Pending drafts are in-memory and disappear on
-process restart. Roll out by validating `/draft`, `/target` with a fake target,
-and dry-run `/approve` before enabling and testing only an authorized internal
-test chat.
+The planner exposes only concise evidence pointers such as chunk IDs, never raw
+conversations, local file paths, customer profiles, or unnecessary PII.
 
 Authority order is:
 
