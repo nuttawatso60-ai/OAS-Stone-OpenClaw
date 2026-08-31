@@ -172,13 +172,18 @@ The draft assistant requires an authorized staff chat through
 access-control layer. It exposes only concise evidence pointers such as chunk IDs,
 never raw conversations, local file paths, customer profiles, or unnecessary PII.
 
-The staff lifecycle is `/draft` followed by explicit `/approve <draft_id>`. Pending
-drafts are held in memory for 15 minutes, then fail closed. Approval is idempotent:
-only one approval is accepted for a `ready` draft, and repeated approval cannot
-send twice. `needs_information`, `conflict`, and `unsupported` drafts cannot be
-approved for sending. Customer send is intentionally disabled because this
-repository has no approved customer target/send primitive; approval only records
-staff approval and reports that no customer message was sent.
+The staff lifecycle is `/draft` -> `/target <draft_id> <customer_chat_id>` ->
+`/approve <draft_id>`. Targets are explicit numeric Telegram chat IDs and are
+never inferred from conversations, evidence, names, or quotations. Pending drafts
+are held in memory for 15 minutes, then fail closed. Only `ready` drafts with a
+bound target can send. `needs_information`, `conflict`, and `unsupported` drafts
+cannot be sent.
+
+The prepared customer payload is fingerprinted at draft creation and sent exactly
+once through the existing Telegram client. Clear send failures remain retryable by
+an explicit staff retry; ambiguous failures block retry to reduce duplicate-send
+risk. `/draft` and `/target` never send, and there is no automatic customer reply,
+background retry, or scheduled send.
 
 Authority order is:
 
